@@ -17,9 +17,14 @@ const router = createRouter({
       component: () => import('@/views/TripsView.vue'),
     },
     {
-      path: '/participating-trips',
-      name: 'participating-trips',
-      component: () => import('@/views/ParticipatingTripsView.vue'),
+      path: '/trips/create',
+      name: 'trip-create',
+      component: () => import('@/views/TripCreateView.vue'),
+    },
+    {
+      path: '/invitations',
+      name: 'invitations',
+      component: () => import('@/views/TripInvitationsView.vue'),
     },
   ],
 })

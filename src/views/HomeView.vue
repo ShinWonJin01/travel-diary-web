@@ -100,6 +100,7 @@ const activities: Activity[] = [
       <section class="recent-trip-section">
         <div class="section-heading">
           <h1>최근 여행</h1>
+
           <RouterLink to="/trips">
             더보기
             <span>›</span>
@@ -132,7 +133,15 @@ const activities: Activity[] = [
       <section class="participating-section">
         <div class="section-heading">
           <h1>참여 중인 여행</h1>
-          <RouterLink to="/participating-trips">
+
+          <RouterLink
+            :to="{
+              path: '/trips',
+              query: {
+                filter: 'participating',
+              },
+            }"
+          >
             더보기
             <span>›</span>
           </RouterLink>
@@ -143,7 +152,12 @@ const activities: Activity[] = [
             v-for="trip in participatingTrips"
             :key="trip.id"
             class="participating-item"
-            :to="`/participating-trips/${trip.id}`"
+            :to="{
+              path: '/trips',
+              query: {
+                filter: 'participating',
+              },
+            }"
           >
             <div class="participating-thumbnail" :class="trip.theme">
               <svg viewBox="0 0 32 27" aria-hidden="true">
@@ -154,6 +168,7 @@ const activities: Activity[] = [
 
             <div class="participating-information">
               <h2>{{ trip.title }}</h2>
+
               <p>
                 참여자 {{ trip.participants }}명
                 <span>|</span>
@@ -184,7 +199,7 @@ const activities: Activity[] = [
               {{ activity.action }}
             </p>
 
-            <span>{{ activity.trip }} · {{ activity.time }}</span>
+            <span> {{ activity.trip }} · {{ activity.time }} </span>
           </div>
         </article>
       </div>
@@ -333,12 +348,12 @@ const activities: Activity[] = [
 
 .participating-thumbnail {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 54px;
   height: 54px;
   border-radius: 8px;
-  flex-shrink: 0;
 }
 
 .participating-thumbnail svg {
