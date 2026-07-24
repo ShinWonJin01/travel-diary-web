@@ -1,12 +1,69 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+
+type NotificationType = 'invitation' | 'trip-change' | 'activity' | 'ai'
+
+interface NotificationItem {
+  id: number
+  type: NotificationType
+  message: string
+  tripTitle: string
+  time: string
+  isRead: boolean
+  to: string
+}
 
 const route = useRoute()
 const router = useRouter()
 
 const isHomePage = computed(() => route.name === 'home')
 const isTripsPage = computed(() => route.name === 'trips')
+
+const isNotificationOpen = ref(false)
+
+const notifications = ref<NotificationItem[]>([
+  {
+    id: 1,
+    type: 'invitation',
+    message: '새로운 여행 초대가 도착했습니다.',
+    tripTitle: '유럽 배낭여행',
+    time: '5분 전',
+    isRead: false,
+    to: '/invitations',
+  },
+  {
+    id: 2,
+    type: 'trip-change',
+    message: '여행 일정이 변경되었습니다.',
+    tripTitle: '제주도 가족여행',
+    time: '30분 전',
+    isRead: false,
+    to: '/trips',
+  },
+  {
+    id: 3,
+    type: 'activity',
+    message: '김민수님이 사진 8장을 추가했습니다.',
+    tripTitle: '제주도 가족여행',
+    time: '1시간 전',
+    isRead: false,
+    to: '/trips?filter=participating',
+  },
+  {
+    id: 4,
+    type: 'ai',
+    message: 'AI 여행기가 완성되었습니다.',
+    tripTitle: '도쿄 여행',
+    time: '어제',
+    isRead: true,
+    to: '/trips',
+  },
+])
+
+const unreadCount = computed(() => {
+  return notifications.value.filter((notification) => !notification.isRead).length
+})
 
 const mobileTitle = computed(() => {
   switch (route.name) {
@@ -27,6 +84,57 @@ const mobileTitle = computed(() => {
   }
 })
 
+const getNotificationTypeLabel = (type: NotificationType) => {
+  switch (type) {
+    case 'invitation':
+      return '초대'
+
+    case 'trip-change':
+      return '여행 변경'
+
+    case 'activity':
+      return '참여자 활동'
+
+    case 'ai':
+      return 'AI 여행기'
+  }
+}
+
+const toggleNotificationPopup = () => {
+  isNotificationOpen.value = !isNotificationOpen.value
+}
+
+const closeNotificationOnOutsideClick = (event: MouseEvent) => {
+  const target = event.target
+
+  if (!(target instanceof Element)) {
+    return
+  }
+
+  const clickedInsideNotification = target.closest(
+    '.notification-wrapper, .mobile-notification-wrapper',
+  )
+
+  if (clickedInsideNotification) {
+    return
+  }
+
+  isNotificationOpen.value = false
+}
+
+const markAllAsRead = () => {
+  notifications.value.forEach((notification) => {
+    notification.isRead = true
+  })
+}
+
+const openNotification = async (notification: NotificationItem) => {
+  notification.isRead = true
+  isNotificationOpen.value = false
+
+  await router.push(notification.to)
+}
+
 const goBack = () => {
   if (window.history.state?.back) {
     router.back()
@@ -39,6 +147,21 @@ const goBack = () => {
 const goToCreateTrip = () => {
   void router.push('/trips/create')
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    isNotificationOpen.value = false
+  },
+)
+
+onMounted(() => {
+  document.addEventListener('click', closeNotificationOnOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeNotificationOnOutsideClick)
+})
 </script>
 
 <template>
@@ -60,13 +183,70 @@ const goToCreateTrip = () => {
     </nav>
 
     <div class="desktop-actions">
-      <button class="notification-button" type="button" aria-label="알림">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-        </svg>
+      <!-- PC 알림 -->
+      <div class="notification-wrapper">
+        <button
+          class="notification-button"
+          type="button"
+          aria-label="알림 열기"
+          :aria-expanded="isNotificationOpen"
+          @click="toggleNotificationPopup"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+          </svg>
 
-        <span class="notification-dot"></span>
-      </button>
+          <span v-if="unreadCount > 0" class="notification-count">
+            {{ unreadCount > 9 ? '9+' : unreadCount }}
+          </span>
+        </button>
+
+        <div v-if="isNotificationOpen" class="notification-popup">
+          <div class="notification-popup-header">
+            <div>
+              <h2>알림</h2>
+              <p>읽지 않은 알림 {{ unreadCount }}개</p>
+            </div>
+
+            <button type="button" :disabled="unreadCount === 0" @click="markAllAsRead">
+              모두 읽음
+            </button>
+          </div>
+
+          <div v-if="notifications.length > 0" class="notification-list">
+            <button
+              v-for="notification in notifications"
+              :key="notification.id"
+              class="notification-item"
+              :class="{ unread: !notification.isRead }"
+              type="button"
+              @click="openNotification(notification)"
+            >
+              <span class="notification-unread-dot" :class="{ hidden: notification.isRead }"></span>
+
+              <span class="notification-information">
+                <span class="notification-type" :class="notification.type">
+                  {{ getNotificationTypeLabel(notification.type) }}
+                </span>
+
+                <strong>
+                  {{ notification.message }}
+                </strong>
+
+                <span class="notification-meta">
+                  {{ notification.tripTitle }}
+                  <span>·</span>
+                  {{ notification.time }}
+                </span>
+              </span>
+            </button>
+          </div>
+
+          <div v-else class="empty-notification">
+            <p>새로운 알림이 없습니다.</p>
+          </div>
+        </div>
+      </div>
 
       <RouterLink class="mypage-button" to="/mypage"> mypage </RouterLink>
     </div>
@@ -103,14 +283,70 @@ const goToCreateTrip = () => {
       {{ mobileTitle }}
     </strong>
 
-    <!-- 홈: 알림 -->
-    <button v-if="isHomePage" class="mobile-notification" type="button" aria-label="알림">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-      </svg>
+    <!-- 모바일 홈 알림 -->
+    <div v-if="isHomePage" class="mobile-notification-wrapper">
+      <button
+        class="mobile-notification"
+        type="button"
+        aria-label="알림 열기"
+        :aria-expanded="isNotificationOpen"
+        @click="toggleNotificationPopup"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+        </svg>
 
-      <span></span>
-    </button>
+        <span v-if="unreadCount > 0" class="notification-count">
+          {{ unreadCount > 9 ? '9+' : unreadCount }}
+        </span>
+      </button>
+
+      <div v-if="isNotificationOpen" class="notification-popup">
+        <div class="notification-popup-header">
+          <div>
+            <h2>알림</h2>
+            <p>읽지 않은 알림 {{ unreadCount }}개</p>
+          </div>
+
+          <button type="button" :disabled="unreadCount === 0" @click="markAllAsRead">
+            모두 읽음
+          </button>
+        </div>
+
+        <div v-if="notifications.length > 0" class="notification-list">
+          <button
+            v-for="notification in notifications"
+            :key="notification.id"
+            class="notification-item"
+            :class="{ unread: !notification.isRead }"
+            type="button"
+            @click="openNotification(notification)"
+          >
+            <span class="notification-unread-dot" :class="{ hidden: notification.isRead }"></span>
+
+            <span class="notification-information">
+              <span class="notification-type" :class="notification.type">
+                {{ getNotificationTypeLabel(notification.type) }}
+              </span>
+
+              <strong>
+                {{ notification.message }}
+              </strong>
+
+              <span class="notification-meta">
+                {{ notification.tripTitle }}
+                <span>·</span>
+                {{ notification.time }}
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <div v-else class="empty-notification">
+          <p>새로운 알림이 없습니다.</p>
+        </div>
+      </div>
+    </div>
 
     <!-- 여행 기록: 여행 추가 -->
     <button
@@ -125,7 +361,6 @@ const goToCreateTrip = () => {
       </svg>
     </button>
 
-    <!-- 오른쪽 버튼이 없는 화면 -->
     <span v-else class="mobile-header-side"></span>
   </header>
 
@@ -251,16 +486,33 @@ const goToCreateTrip = () => {
   gap: 28px;
 }
 
+.mypage-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 42px;
+  border-radius: 24px;
+  font-size: 13px;
+  color: #ffffff;
+  background: #4e6688;
+}
+
 /* =========================
-   알림 버튼
+   알림
 ========================= */
+.notification-wrapper,
+.mobile-notification-wrapper {
+  position: relative;
+}
+
 .notification-button,
 .mobile-notification {
   position: relative;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
   color: #27364a;
@@ -279,27 +531,180 @@ const goToCreateTrip = () => {
   stroke-width: 1.7;
 }
 
-.notification-dot {
+.notification-count {
   position: absolute;
-  top: -2px;
-  right: -3px;
-  width: 7px;
-  height: 7px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: #ff3d56;
-}
-
-.mypage-button {
+  top: -6px;
+  right: -7px;
   display: flex;
+  min-width: 17px;
+  height: 17px;
   align-items: center;
   justify-content: center;
-  min-width: 84px;
-  height: 42px;
-  border-radius: 24px;
-  font-size: 13px;
+  padding: 0 4px;
+  border: 2px solid #ffffff;
+  border-radius: 10px;
+  font-size: 8px;
+  font-weight: 700;
   color: #ffffff;
-  background: #4e6688;
+  background: #ff4058;
+}
+
+.notification-popup {
+  position: absolute;
+  top: calc(100% + 17px);
+  right: 0;
+  z-index: 300;
+  width: 370px;
+  overflow: hidden;
+  border: 1px solid #e2e7ed;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: 0 16px 45px rgba(31, 43, 61, 0.18);
+}
+
+.notification-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 19px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.notification-popup-header h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #252c36;
+}
+
+.notification-popup-header p {
+  margin: 5px 0 0;
+  font-size: 10px;
+  color: #949ca7;
+}
+
+.notification-popup-header > button {
+  padding: 5px;
+  border: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4164e9;
+  background: transparent;
+  cursor: pointer;
+}
+
+.notification-popup-header > button:disabled {
+  color: #b6bcc4;
+  cursor: default;
+}
+
+.notification-list {
+  max-height: 390px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 15px 18px;
+  border: 0;
+  border-bottom: 1px solid #f0f2f5;
+  text-align: left;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+.notification-item.unread {
+  background: #f8faff;
+}
+
+.notification-item:hover {
+  background: #f4f7fb;
+}
+
+.notification-unread-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: #3f67ef;
+}
+
+.notification-unread-dot.hidden {
+  visibility: hidden;
+}
+
+.notification-information {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.notification-type {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.notification-type.invitation {
+  color: #315ce8;
+  background: #eaf0ff;
+}
+
+.notification-type.trip-change {
+  color: #8a6415;
+  background: #fff4d5;
+}
+
+.notification-type.activity {
+  color: #28745c;
+  background: #e7f7f0;
+}
+
+.notification-type.ai {
+  color: #7052b4;
+  background: #f0eaff;
+}
+
+.notification-information strong {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #303741;
+}
+
+.notification-meta {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #979fa9;
+}
+
+.notification-meta span {
+  margin: 0 4px;
+  color: #c1c6cd;
+}
+
+.empty-notification {
+  display: flex;
+  min-height: 170px;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-notification p {
+  margin: 0;
+  font-size: 12px;
+  color: #959da7;
 }
 
 /* PC에서는 모바일 요소 숨김 */
@@ -316,7 +721,6 @@ const goToCreateTrip = () => {
     display: none;
   }
 
-  /* 왼쪽 버튼 / 가운데 제목 / 오른쪽 버튼 */
   .mobile-header {
     display: grid;
     grid-template-columns: 36px minmax(0, 1fr) 36px;
@@ -338,7 +742,6 @@ const goToCreateTrip = () => {
     white-space: nowrap;
   }
 
-  /* 삼단바, 뒤로가기, 추가 버튼 공통 */
   .mobile-header-button {
     display: flex;
     align-items: center;
@@ -362,17 +765,14 @@ const goToCreateTrip = () => {
     stroke-width: 1.8;
   }
 
-  /* 왼쪽 버튼은 왼쪽 정렬 */
   .mobile-header > .mobile-header-button:first-child {
     justify-self: start;
   }
 
-  /* 오른쪽 버튼은 오른쪽 정렬 */
   .mobile-header > .mobile-header-button:last-child {
     justify-self: end;
   }
 
-  /* 버튼이 없는 자리를 채워 제목을 가운데로 유지 */
   .mobile-header-side {
     display: block;
     width: 24px;
@@ -380,8 +780,13 @@ const goToCreateTrip = () => {
     justify-self: end;
   }
 
-  .mobile-notification {
+  .mobile-notification-wrapper {
     justify-self: end;
+  }
+
+  .mobile-notification {
+    width: 24px;
+    height: 24px;
   }
 
   .mobile-notification svg {
@@ -389,15 +794,53 @@ const goToCreateTrip = () => {
     height: 20px;
   }
 
-  .mobile-notification span {
-    position: absolute;
-    top: -1px;
-    right: -2px;
-    width: 6px;
-    height: 6px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    background: #ff4158;
+  .mobile-notification .notification-count {
+    top: -7px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 7px;
+  }
+
+  .mobile-notification-wrapper .notification-popup {
+    position: fixed;
+    top: 66px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100vh - 150px);
+  }
+
+  .notification-popup-header {
+    padding: 15px 16px;
+  }
+
+  .notification-popup-header h2 {
+    font-size: 14px;
+  }
+
+  .notification-popup-header p {
+    font-size: 9px;
+  }
+
+  .notification-popup-header > button {
+    font-size: 10px;
+  }
+
+  .notification-list {
+    max-height: calc(100vh - 235px);
+  }
+
+  .notification-item {
+    padding: 13px 15px;
+  }
+
+  .notification-information strong {
+    font-size: 11px;
+  }
+
+  .notification-meta {
+    font-size: 9px;
   }
 
   /* =========================

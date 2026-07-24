@@ -26,6 +26,11 @@ const router = createRouter({
       name: 'invitations',
       component: () => import('@/views/TripInvitationsView.vue'),
     },
+    {
+      path: '/mypage',
+      name: 'mypage',
+      component: () => import('@/views/MyPageView.vue'),
+    },
   ],
 })
 
