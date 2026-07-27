@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import {
+  getStoredMember,
+  logout as clearStoredLogin,
+  type Member,
+} from '@/api/auth'
 
 type NotificationType = 'invitation' | 'trip-change' | 'activity' | 'ai'
 
@@ -16,6 +21,14 @@ interface NotificationItem {
 
 const route = useRoute()
 const router = useRouter()
+
+const currentMember = ref<Member | null>(
+  getStoredMember(),
+)
+
+const memberNickname = computed(() => {
+  return currentMember.value?.nickname ?? '마이페이지'
+})
 
 const isHomePage = computed(() => route.name === 'home')
 const isTripsPage = computed(() => route.name === 'trips')
@@ -78,6 +91,9 @@ const mobileTitle = computed(() => {
 
     case 'trip-create':
       return '여행 만들기'
+
+    case 'trip-detail':
+      return '여행 상세'
 
     default:
       return '공동 여행기록장'
@@ -146,6 +162,15 @@ const goBack = () => {
 
 const goToCreateTrip = () => {
   void router.push('/trips/create')
+}
+
+const handleLogout = async () => {
+  clearStoredLogin()
+
+  currentMember.value = null
+  isNotificationOpen.value = false
+
+  await router.replace('/login')
 }
 
 watch(
@@ -248,7 +273,23 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <RouterLink class="mypage-button" to="/mypage"> mypage </RouterLink>
+      <div class="account-actions">
+        <RouterLink
+          class="mypage-button"
+          to="/mypage"
+          :title="memberNickname"
+        >
+          {{ memberNickname }}
+        </RouterLink>
+
+        <button
+          class="logout-button"
+          type="button"
+          @click="handleLogout"
+        >
+          로그아웃
+        </button>
+      </div>
     </div>
   </header>
 
@@ -486,15 +527,43 @@ onBeforeUnmount(() => {
   gap: 28px;
 }
 
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logout-button {
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #d7e0ea;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #536477;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  border-color: #b8c5d4;
+  background: #f6f8fb;
+}
+
 .mypage-button {
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 84px;
+  max-width: 150px;
   height: 42px;
+  padding: 0 18px;
+  overflow: hidden;
   border-radius: 24px;
   font-size: 13px;
   color: #ffffff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: #4e6688;
 }
 

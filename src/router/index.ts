@@ -7,6 +7,22 @@ const router = createRouter({
 
   routes: [
     {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/views/LoginView.vue'),
+      meta: {
+        authPage: true,
+      },
+    },
+    {
+      path: '/signup',
+      name: 'signup',
+      component: () => import('@/views/SignUpView.vue'),
+      meta: {
+        authPage: true,
+      },
+    },
+    {
       path: '/',
       name: 'home',
       component: HomeView,
@@ -20,6 +36,11 @@ const router = createRouter({
       path: '/trips/create',
       name: 'trip-create',
       component: () => import('@/views/TripCreateView.vue'),
+    },
+    {
+      path: '/trips/:id',
+      name: 'trip-detail',
+      component: () => import('@/views/TripDetailView.vue'),
     },
     {
       path: '/invitations',
