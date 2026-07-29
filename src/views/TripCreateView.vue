@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import {
+  createTrip,
+  uploadTripCoverImage,
+} from '@/api/trips'
+import { ApiError } from '@/api/http'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -111,7 +116,7 @@ const validateForm = () => {
   return ''
 }
 
-const createTrip = async () => {
+const handleCreateTrip = async () => {
   const validationMessage = validateForm()
 
   if (validationMessage) {
@@ -122,27 +127,54 @@ const createTrip = async () => {
   errorMessage.value = ''
   isSubmitting.value = true
 
-  const newTrip = {
-    ...tripForm.value,
-    title: tripForm.value.title.trim(),
-    location: tripForm.value.location.trim(),
-    description: tripForm.value.description.trim(),
-    image: selectedImage.value,
+  try {
+    const createdTrip = await createTrip({
+      title: tripForm.value.title.trim(),
+      destination: tripForm.value.location.trim(),
+      startDate: tripForm.value.startDate,
+
+      endDate: tripForm.value.isEndDateUnknown
+        ? null
+        : tripForm.value.endDate,
+
+      description: tripForm.value.description.trim(),
+    })
+
+    if (selectedImage.value) {
+      try {
+        await uploadTripCoverImage(
+          createdTrip.id,
+          selectedImage.value,
+        )
+      } catch (error: unknown) {
+        const uploadErrorMessage =
+          error instanceof ApiError
+            ? error.message
+            : '대표 이미지를 업로드하지 못했습니다.'
+
+        window.alert(
+          `여행은 생성되었지만 대표 이미지 업로드에 실패했습니다.\n${uploadErrorMessage}`,
+        )
+
+        await router.push(`/trips/${createdTrip.id}`)
+        return
+      }
+    }
+
+    window.alert('여행이 생성되었습니다.')
+
+    await router.push(`/trips/${createdTrip.id}`)
+  } catch (error: unknown) {
+    if (error instanceof ApiError) {
+      errorMessage.value = error.message
+      return
+    }
+
+    errorMessage.value =
+      '여행을 생성하는 중 오류가 발생했습니다.'
+  } finally {
+    isSubmitting.value = false
   }
-
-  console.log('생성할 여행 정보:', newTrip)
-
-  /*
-   * 추후 백엔드 API와 연결할 부분입니다.
-   * 현재는 화면 동작 확인을 위해 잠시 기다린 뒤
-   * 여행 기록 페이지로 이동합니다.
-   */
-  await new Promise((resolve) => window.setTimeout(resolve, 500))
-
-  isSubmitting.value = false
-
-  window.alert('여행이 생성되었습니다.')
-  await router.push('/trips')
 }
 
 const cancelCreate = () => {
@@ -169,7 +201,7 @@ onBeforeUnmount(() => {
       <h1>여행 만들기</h1>
     </div>
 
-    <form class="trip-create-form" @submit.prevent="createTrip">
+    <form class="trip-create-form" @submit.prevent="handleCreateTrip">
       <!-- 기본 정보 -->
       <section class="form-section">
         <div class="section-heading">
