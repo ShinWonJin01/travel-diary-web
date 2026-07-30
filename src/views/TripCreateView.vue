@@ -4,8 +4,10 @@ import {
   uploadTripCoverImage,
 } from '@/api/trips'
 import { ApiError } from '@/api/http'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import '@vuepic/vue-datepicker/dist/main.css'
 
 interface TripForm {
   title: string
@@ -15,6 +17,8 @@ interface TripForm {
   location: string
   description: string
 }
+
+const MAX_COVER_IMAGE_SIZE = 10 * 1024 * 1024
 
 const router = useRouter()
 
@@ -30,11 +34,41 @@ const tripForm = ref<TripForm>({
 const imageInput = ref<HTMLInputElement | null>(null)
 const selectedImage = ref<File | null>(null)
 const imagePreviewUrl = ref('')
+
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 
-const titleLength = computed(() => tripForm.value.title.length)
-const descriptionLength = computed(() => tripForm.value.description.length)
+const endDateMinimum = computed<Date | undefined>(() => {
+  const startDate = tripForm.value.startDate
+
+  if (!startDate) {
+    return undefined
+  }
+
+  const parsedDate = new Date(
+    `${startDate}T00:00:00`,
+  )
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return undefined
+  }
+
+  return parsedDate
+})
+
+watch(
+  () => tripForm.value.startDate,
+  (startDate) => {
+    const endDate = tripForm.value.endDate
+
+    if (
+      !startDate ||
+      (endDate && endDate < startDate)
+    ) {
+      tripForm.value.endDate = ''
+    }
+  },
+)
 
 const openImagePicker = () => {
   imageInput.value?.click()
@@ -49,15 +83,17 @@ const handleImageChange = (event: Event) => {
   }
 
   if (!file.type.startsWith('image/')) {
-    errorMessage.value = '이미지 파일만 등록할 수 있습니다.'
+    errorMessage.value =
+      '이미지 파일만 등록할 수 있습니다.'
+
     input.value = ''
     return
   }
 
-  const maximumFileSize = 10 * 1024 * 1024
+  if (file.size > MAX_COVER_IMAGE_SIZE) {
+    errorMessage.value =
+      '대표 이미지는 10MB 이하로 등록해 주세요.'
 
-  if (file.size > maximumFileSize) {
-    errorMessage.value = '대표 이미지는 10MB 이하로 등록해 주세요.'
     input.value = ''
     return
   }
@@ -67,7 +103,9 @@ const handleImageChange = (event: Event) => {
   }
 
   selectedImage.value = file
-  imagePreviewUrl.value = URL.createObjectURL(file)
+  imagePreviewUrl.value =
+    URL.createObjectURL(file)
+
   errorMessage.value = ''
 }
 
@@ -85,31 +123,43 @@ const removeImage = () => {
 }
 
 const handleEndDateUnknown = () => {
-  tripForm.value.isEndDateUnknown = !tripForm.value.isEndDateUnknown
+  tripForm.value.isEndDateUnknown =
+    !tripForm.value.isEndDateUnknown
 
   if (tripForm.value.isEndDateUnknown) {
     tripForm.value.endDate = ''
   }
 }
 
-const validateForm = () => {
-  if (!tripForm.value.title.trim()) {
+const validateForm = (): string => {
+  const {
+    title,
+    startDate,
+    endDate,
+    isEndDateUnknown,
+    location,
+  } = tripForm.value
+
+  if (!title.trim()) {
     return '여행 제목을 입력해 주세요.'
   }
 
-  if (!tripForm.value.startDate) {
+  if (!startDate) {
     return '여행 시작일을 선택해 주세요.'
   }
 
-  if (!tripForm.value.isEndDateUnknown && !tripForm.value.endDate) {
+  if (!isEndDateUnknown && !endDate) {
     return '여행 종료일을 선택하거나 종료일 미정을 체크해 주세요.'
   }
 
-  if (!tripForm.value.isEndDateUnknown && tripForm.value.endDate < tripForm.value.startDate) {
+  if (
+    !isEndDateUnknown &&
+    endDate < startDate
+  ) {
     return '종료일은 시작일보다 빠를 수 없습니다.'
   }
 
-  if (!tripForm.value.location.trim()) {
+  if (!location.trim()) {
     return '대표 지역을 입력해 주세요.'
   }
 
@@ -127,17 +177,24 @@ const handleCreateTrip = async () => {
   errorMessage.value = ''
   isSubmitting.value = true
 
+  const {
+    title,
+    startDate,
+    endDate,
+    isEndDateUnknown,
+    location,
+    description,
+  } = tripForm.value
+
   try {
     const createdTrip = await createTrip({
-      title: tripForm.value.title.trim(),
-      destination: tripForm.value.location.trim(),
-      startDate: tripForm.value.startDate,
-
-      endDate: tripForm.value.isEndDateUnknown
+      title: title.trim(),
+      destination: location.trim(),
+      startDate,
+      endDate: isEndDateUnknown
         ? null
-        : tripForm.value.endDate,
-
-      description: tripForm.value.description.trim(),
+        : endDate,
+      description: description.trim(),
     })
 
     if (selectedImage.value) {
@@ -156,14 +213,19 @@ const handleCreateTrip = async () => {
           `여행은 생성되었지만 대표 이미지 업로드에 실패했습니다.\n${uploadErrorMessage}`,
         )
 
-        await router.push(`/trips/${createdTrip.id}`)
+        await router.push(
+          `/trips/${createdTrip.id}`,
+        )
+
         return
       }
     }
 
     window.alert('여행이 생성되었습니다.')
 
-    await router.push(`/trips/${createdTrip.id}`)
+    await router.push(
+      `/trips/${createdTrip.id}`,
+    )
   } catch (error: unknown) {
     if (error instanceof ApiError) {
       errorMessage.value = error.message
@@ -224,7 +286,7 @@ onBeforeUnmount(() => {
                 <strong>*</strong>
               </label>
 
-              <span>{{ titleLength }}/30</span>
+              <span>{{ tripForm.title.length }}/30</span>
             </div>
 
             <input
@@ -242,7 +304,20 @@ onBeforeUnmount(() => {
               <strong>*</strong>
             </label>
 
-            <input id="trip-start-date" v-model="tripForm.startDate" type="date" />
+            <VueDatePicker
+              id="trip-start-date"
+              v-model="tripForm.startDate"
+              model-type="yyyy-MM-dd"
+              :time-config="{
+                enableTimePicker: false,
+                ignoreTimeValidation: true,
+              }"
+              :ui="{
+                input: 'trip-date-input',
+              }"
+              auto-apply
+              placeholder="시작일을 선택해 주세요."
+            />
           </div>
 
           <div class="form-field">
@@ -251,12 +326,24 @@ onBeforeUnmount(() => {
               <strong v-if="!tripForm.isEndDateUnknown">*</strong>
             </label>
 
-            <input
+            <VueDatePicker
               id="trip-end-date"
               v-model="tripForm.endDate"
-              type="date"
-              :min="tripForm.startDate"
-              :disabled="tripForm.isEndDateUnknown"
+              model-type="yyyy-MM-dd"
+              :time-config="{
+                enableTimePicker: false,
+                ignoreTimeValidation: true,
+              }"
+              :ui="{
+                input: 'trip-date-input',
+              }"
+              :min-date="endDateMinimum"
+              :disabled="
+                tripForm.isEndDateUnknown ||
+                !tripForm.startDate
+              "
+              auto-apply
+              placeholder="종료일을 선택해 주세요."
             />
 
             <button
@@ -304,7 +391,7 @@ onBeforeUnmount(() => {
             <div class="field-heading">
               <label for="trip-description"> 한 줄 소개 </label>
 
-              <span>{{ descriptionLength }}/100</span>
+              <span>{{ tripForm.description.length }}/100</span>
             </div>
 
             <textarea
@@ -378,6 +465,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .trip-create-page {
+  --form-input-height: 46px;
+  --form-input-radius: 8px;
+
   padding: 42px 48px 72px;
 }
 
@@ -489,7 +579,7 @@ onBeforeUnmount(() => {
 .form-field textarea {
   width: 100%;
   border: 1px solid #dfe4eb;
-  border-radius: 8px;
+  border-radius: var(--form-input-radius);
   outline: none;
   font: inherit;
   color: #303743;
@@ -500,7 +590,7 @@ onBeforeUnmount(() => {
 }
 
 .form-field input {
-  height: 46px;
+  height: var(--form-input-height);
   padding: 0 14px;
 }
 
@@ -522,10 +612,64 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 0 3px rgba(82, 114, 237, 0.1);
 }
 
-.form-field input:disabled {
-  color: #abb2bb;
-  background: #f3f5f7;
+/* VueDatePicker를 일반 입력창과 동일하게 표시 */
+.form-field :deep(.dp__main),
+.form-field :deep(.dp__input_wrap) {
+  width: 100%;
+}
+
+.form-field :deep(.dp__input_wrap) {
+  height: var(--form-input-height);
+}
+
+.form-field :deep(.trip-date-input) {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: var(--form-input-height) !important;
+  min-height: var(--form-input-height) !important;
+  padding: 0 40px !important;
+  border: 1px solid #dfe4eb !important;
+  border-radius: var(--form-input-radius) !important;
+  outline: none;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: normal !important;
+  color: #303743 !important;
+  background: #ffffff !important;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.form-field :deep(.trip-date-input::placeholder) {
+  color: #b0b7c0 !important;
+  opacity: 1;
+}
+
+.form-field :deep(.trip-date-input:focus) {
+  border-color: #5272ed !important;
+  box-shadow: 0 0 0 3px rgba(82, 114, 237, 0.1);
+}
+
+.form-field :deep(.trip-date-input:disabled) {
+  color: #abb2bb !important;
+  background: #f3f5f7 !important;
   cursor: not-allowed;
+  opacity: 1;
+}
+
+.form-field :deep(.dp__input_icon) {
+  left: 13px;
+  width: 18px;
+  height: 18px;
+  color: #84909e;
+}
+
+.form-field :deep(.dp__clear_icon) {
+  right: 13px;
+  width: 18px;
+  height: 18px;
+  color: #84909e;
 }
 
 .location-input {
@@ -746,6 +890,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 760px) {
   .trip-create-page {
+    --form-input-height: 42px;
+
     padding: 18px 17px 92px;
   }
 
@@ -804,9 +950,28 @@ onBeforeUnmount(() => {
   }
 
   .form-field input {
-    height: 42px;
+    height: var(--form-input-height);
     padding: 0 12px;
     font-size: 11px;
+  }
+
+  .form-field :deep(.trip-date-input) {
+    height: var(--form-input-height) !important;
+    min-height: var(--form-input-height) !important;
+    padding: 0 36px !important;
+    font-size: 11px !important;
+  }
+
+  .form-field :deep(.dp__input_icon) {
+    left: 12px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .form-field :deep(.dp__clear_icon) {
+    right: 12px;
+    width: 16px;
+    height: 16px;
   }
 
   .form-field textarea {

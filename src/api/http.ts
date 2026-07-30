@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
   status: number
@@ -50,14 +50,32 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const message =
+    console.error('API 요청 실패', {
+      path,
+      status: response.status,
+      responseData,
+    })
+
+    let message = `요청을 처리하는 중 오류가 발생했습니다. (${response.status})`
+
+    if (
       typeof responseData === 'object' &&
       responseData !== null &&
       'message' in responseData
-        ? String(responseData.message)
-        : '요청을 처리하는 중 오류가 발생했습니다.'
+    ) {
+      message = String(responseData.message)
+    } else if (
+      typeof responseData === 'string' &&
+      responseData.trim()
+    ) {
+      message = responseData
+    }
 
     throw new ApiError(response.status, message)
+  }
+
+  if (!responseText) {
+    return undefined as T
   }
 
   return responseData as T

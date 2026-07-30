@@ -29,8 +29,8 @@ export interface LoginResponse {
 
 export async function signup(
   request: SignupRequest,
-): Promise<Member> {
-  return apiRequest<Member>(
+): Promise<void> {
+  await apiRequest<void>(
     '/api/members',
     {
       method: 'POST',

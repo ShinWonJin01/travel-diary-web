@@ -32,6 +32,7 @@ const memberNickname = computed(() => {
 
 const isHomePage = computed(() => route.name === 'home')
 const isTripsPage = computed(() => route.name === 'trips')
+const isTripDetailPage = computed(() => route.name === 'trip-detail')
 
 const isNotificationOpen = ref(false)
 
@@ -93,7 +94,7 @@ const mobileTitle = computed(() => {
       return '여행 만들기'
 
     case 'trip-detail':
-      return '여행 상세'
+      return '도쿄 여행'
 
     default:
       return '공동 여행기록장'
@@ -294,7 +295,10 @@ onBeforeUnmount(() => {
   </header>
 
   <!-- 모바일 상단 헤더 -->
-  <header class="mobile-header">
+  <header
+    class="mobile-header"
+    :class="{ 'trip-detail-header': isTripDetailPage }"
+  >
     <!-- 홈: 삼단바 -->
     <button
       v-if="isHomePage"
@@ -402,11 +406,28 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
+    <!-- 여행 상세: 더보기 -->
+    <button
+      v-else-if="isTripDetailPage"
+      class="mobile-header-button mobile-more-button"
+      type="button"
+      aria-label="여행 상세 메뉴 열기"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="5" r="1.2" />
+        <circle cx="12" cy="12" r="1.2" />
+        <circle cx="12" cy="19" r="1.2" />
+      </svg>
+    </button>
+
     <span v-else class="mobile-header-side"></span>
   </header>
 
   <!-- 모바일 하단 메뉴 -->
-  <nav class="mobile-bottom-navigation">
+  <nav
+    v-if="!isTripDetailPage"
+    class="mobile-bottom-navigation"
+  >
     <RouterLink to="/">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="m3 11 9-8 9 8v10h-6v-6H9v6H3z" />
@@ -798,6 +819,20 @@ onBeforeUnmount(() => {
     padding: 0 17px;
     border-bottom: 1px solid #eef1f5;
     background: #ffffff;
+  }
+
+  .mobile-header.trip-detail-header {
+    height: 52px;
+    padding: 0 12px;
+  }
+
+  .trip-detail-header .mobile-header-title {
+    font-size: 14px;
+  }
+
+  .mobile-more-button svg {
+    width: 19px;
+    height: 19px;
   }
 
   .mobile-header-title {
