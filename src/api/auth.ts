@@ -20,6 +20,15 @@ export interface LoginRequest {
   password: string
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface DeleteAccountRequest {
+  password: string
+}
+
 export interface LoginResponse {
   accessToken: string
   tokenType: string
@@ -74,6 +83,30 @@ export async function login(
   return response
 }
 
+export async function changePassword(
+  request: ChangePasswordRequest,
+): Promise<void> {
+  await apiRequest<void>(
+    '/api/members/me/password',
+    {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    },
+  )
+}
+
+export async function deleteAccount(
+  request: DeleteAccountRequest,
+): Promise<void> {
+  await apiRequest<void>(
+    '/api/members/me',
+    {
+      method: 'DELETE',
+      body: JSON.stringify(request),
+    },
+  )
+}
+
 export function logout(): void {
   sessionStorage.removeItem('accessToken')
   sessionStorage.removeItem('member')
@@ -104,3 +137,4 @@ export function getStoredMember(): Member | null {
     return null
   }
 }
+

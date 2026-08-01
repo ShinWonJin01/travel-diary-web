@@ -1,9 +1,21 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import {
+  changePassword,
+  deleteAccount,
+  logout,
+} from '@/api/auth'
+import { ApiError } from '@/api/http'
+
 interface MyPageMenu {
   id: string
   title: string
   description: string
 }
+
+const router = useRouter()
 
 const menuItems: MyPageMenu[] = [
   {
@@ -32,6 +44,254 @@ const menuItems: MyPageMenu[] = [
     description: '로그아웃과 회원 탈퇴를 관리합니다.',
   },
 ]
+
+/* =========================
+   비밀번호 변경
+========================= */
+
+const isPasswordModalOpen = ref(false)
+
+const currentPassword = ref('')
+const newPassword = ref('')
+const newPasswordConfirm = ref('')
+
+const passwordErrorMessage = ref('')
+const isChangingPassword = ref(false)
+
+/* =========================
+   계정 관리
+========================= */
+
+const isAccountModalOpen = ref(false)
+const isDeleteAccountFormOpen = ref(false)
+
+const deleteAccountPassword = ref('')
+const accountErrorMessage = ref('')
+
+const isLoggingOut = ref(false)
+const isDeletingAccount = ref(false)
+
+/* =========================
+   설정 메뉴 클릭
+========================= */
+
+const handleMenuClick = (menuId: string) => {
+  if (menuId === 'password') {
+    openPasswordModal()
+    return
+  }
+
+  if (menuId === 'account') {
+    openAccountModal()
+  }
+}
+
+/* =========================
+   비밀번호 변경 모달
+========================= */
+
+const openPasswordModal = () => {
+  passwordErrorMessage.value = ''
+  isPasswordModalOpen.value = true
+}
+
+const resetPasswordForm = () => {
+  currentPassword.value = ''
+  newPassword.value = ''
+  newPasswordConfirm.value = ''
+  passwordErrorMessage.value = ''
+}
+
+const closePasswordModal = () => {
+  if (isChangingPassword.value) {
+    return
+  }
+
+  isPasswordModalOpen.value = false
+  resetPasswordForm()
+}
+
+const submitPasswordChange = async () => {
+  passwordErrorMessage.value = ''
+
+  if (!currentPassword.value) {
+    passwordErrorMessage.value =
+      '현재 비밀번호를 입력해 주세요.'
+    return
+  }
+
+  if (!newPassword.value) {
+    passwordErrorMessage.value =
+      '새 비밀번호를 입력해 주세요.'
+    return
+  }
+
+  if (
+    newPassword.value.length < 8
+    || newPassword.value.length > 30
+  ) {
+    passwordErrorMessage.value =
+      '새 비밀번호는 8자 이상 30자 이하로 입력해 주세요.'
+    return
+  }
+
+  if (
+    currentPassword.value
+    === newPassword.value
+  ) {
+    passwordErrorMessage.value =
+      '새 비밀번호는 현재 비밀번호와 다르게 입력해 주세요.'
+    return
+  }
+
+  if (
+    newPassword.value
+    !== newPasswordConfirm.value
+  ) {
+    passwordErrorMessage.value =
+      '새 비밀번호가 일치하지 않습니다.'
+    return
+  }
+
+  isChangingPassword.value = true
+
+  try {
+    await changePassword({
+      currentPassword: currentPassword.value,
+      newPassword: newPassword.value,
+    })
+
+    isPasswordModalOpen.value = false
+    resetPasswordForm()
+
+    window.alert(
+      '비밀번호가 변경되었습니다.',
+    )
+  } catch (error: unknown) {
+    passwordErrorMessage.value =
+      error instanceof ApiError
+        ? error.message
+        : '비밀번호를 변경하지 못했습니다.'
+  } finally {
+    isChangingPassword.value = false
+  }
+}
+
+/* =========================
+   계정 관리 모달
+========================= */
+
+const resetAccountModal = () => {
+  isDeleteAccountFormOpen.value = false
+  deleteAccountPassword.value = ''
+  accountErrorMessage.value = ''
+}
+
+const openAccountModal = () => {
+  resetAccountModal()
+  isAccountModalOpen.value = true
+}
+
+const closeAccountModal = () => {
+  if (
+    isLoggingOut.value
+    || isDeletingAccount.value
+  ) {
+    return
+  }
+
+  isAccountModalOpen.value = false
+  resetAccountModal()
+}
+
+/* =========================
+   로그아웃
+========================= */
+
+const handleLogout = async () => {
+  if (
+    isLoggingOut.value
+    || isDeletingAccount.value
+  ) {
+    return
+  }
+
+  isLoggingOut.value = true
+
+  try {
+    logout()
+
+    isAccountModalOpen.value = false
+
+    await router.replace('/login')
+  } finally {
+    isLoggingOut.value = false
+  }
+}
+
+/* =========================
+   회원 탈퇴
+========================= */
+
+const openDeleteAccountForm = () => {
+  accountErrorMessage.value = ''
+  deleteAccountPassword.value = ''
+  isDeleteAccountFormOpen.value = true
+}
+
+const closeDeleteAccountForm = () => {
+  if (isDeletingAccount.value) {
+    return
+  }
+
+  isDeleteAccountFormOpen.value = false
+  deleteAccountPassword.value = ''
+  accountErrorMessage.value = ''
+}
+
+const submitDeleteAccount = async () => {
+  accountErrorMessage.value = ''
+
+  if (!deleteAccountPassword.value) {
+    accountErrorMessage.value =
+      '현재 비밀번호를 입력해 주세요.'
+    return
+  }
+
+  const confirmed = window.confirm(
+    '정말 회원 탈퇴를 진행하시겠습니까?\n\n계정과 내가 만든 여행, 참여 및 초대 정보가 삭제되며 복구할 수 없습니다.',
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  isDeletingAccount.value = true
+
+  try {
+    await deleteAccount({
+      password: deleteAccountPassword.value,
+    })
+
+    logout()
+
+    isAccountModalOpen.value = false
+    resetAccountModal()
+
+    window.alert(
+      '회원 탈퇴가 완료되었습니다.',
+    )
+
+    await router.replace('/login')
+  } catch (error: unknown) {
+    accountErrorMessage.value =
+      error instanceof ApiError
+        ? error.message
+        : '회원 탈퇴를 처리하지 못했습니다.'
+  } finally {
+    isDeletingAccount.value = false
+  }
+}
 </script>
 
 <template>
@@ -82,44 +342,376 @@ const menuItems: MyPageMenu[] = [
         <h2>계정 및 설정</h2>
 
         <div class="settings-list">
-          <button v-for="item in menuItems" :key="item.id" class="settings-item" type="button">
+          <button
+            v-for="item in menuItems"
+            :key="item.id"
+            class="settings-item"
+            type="button"
+            @click="handleMenuClick(item.id)"
+          >
             <span class="settings-icon">
-              <svg v-if="item.id === 'profile'" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 21c0-5 3-8 8-8s8 3 8 8" />
+              <svg
+                v-if="item.id === 'profile'"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="8"
+                  r="4"
+                />
+                <path
+                  d="M4 21c0-5 3-8 8-8s8 3 8 8"
+                />
               </svg>
 
-              <svg v-else-if="item.id === 'notifications'" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+              <svg
+                v-else-if="
+                  item.id === 'notifications'
+                "
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"
+                />
               </svg>
 
-              <svg v-else-if="item.id === 'privacy'" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6z" />
-                <circle cx="12" cy="11" r="2" />
+              <svg
+                v-else-if="
+                  item.id === 'privacy'
+                "
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6z"
+                />
+                <circle
+                  cx="12"
+                  cy="11"
+                  r="2"
+                />
               </svg>
 
-              <svg v-else-if="item.id === 'password'" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="5" y="10" width="14" height="10" rx="2" />
-                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              <svg
+                v-else-if="
+                  item.id === 'password'
+                "
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <rect
+                  x="5"
+                  y="10"
+                  width="14"
+                  height="10"
+                  rx="2"
+                />
+                <path
+                  d="M8 10V7a4 4 0 0 1 8 0v3"
+                />
               </svg>
 
-              <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M8 12h8M12 8v8" />
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                />
+                <path
+                  d="M8 12h8M12 8v8"
+                />
               </svg>
             </span>
 
             <span class="settings-information">
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.description }}</span>
+              <strong>
+                {{ item.title }}
+              </strong>
+
+              <span>
+                {{ item.description }}
+              </span>
             </span>
 
-            <span class="settings-arrow">›</span>
+            <span class="settings-arrow">
+              ›
+            </span>
           </button>
         </div>
       </section>
     </div>
   </section>
+
+  <!-- 비밀번호 변경 모달 -->
+  <div
+    v-if="isPasswordModalOpen"
+    class="password-modal-backdrop"
+    @click.self="closePasswordModal"
+  >
+    <section
+      class="password-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="password-modal-title"
+    >
+      <header class="password-modal-header">
+        <div>
+          <p>PASSWORD</p>
+
+          <h2 id="password-modal-title">
+            비밀번호 변경
+          </h2>
+        </div>
+
+        <button
+          class="password-modal-close"
+          type="button"
+          aria-label="비밀번호 변경 창 닫기"
+          @click="closePasswordModal"
+        >
+          ×
+        </button>
+      </header>
+
+      <form
+        class="password-form"
+        @submit.prevent="submitPasswordChange"
+      >
+        <div class="password-field">
+          <label for="current-password">
+            현재 비밀번호
+          </label>
+
+          <input
+            id="current-password"
+            v-model="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            placeholder="현재 비밀번호"
+            :disabled="isChangingPassword"
+          />
+        </div>
+
+        <div class="password-field">
+          <label for="new-password">
+            새 비밀번호
+          </label>
+
+          <input
+            id="new-password"
+            v-model="newPassword"
+            type="password"
+            autocomplete="new-password"
+            placeholder="8자 이상 30자 이하"
+            :disabled="isChangingPassword"
+          />
+        </div>
+
+        <div class="password-field">
+          <label for="new-password-confirm">
+            새 비밀번호 확인
+          </label>
+
+          <input
+            id="new-password-confirm"
+            v-model="newPasswordConfirm"
+            type="password"
+            autocomplete="new-password"
+            placeholder="새 비밀번호를 다시 입력"
+            :disabled="isChangingPassword"
+          />
+        </div>
+
+        <p
+          v-if="passwordErrorMessage"
+          class="password-error-message"
+        >
+          {{ passwordErrorMessage }}
+        </p>
+
+        <div class="password-modal-actions">
+          <button
+            class="password-cancel-button"
+            type="button"
+            :disabled="isChangingPassword"
+            @click="closePasswordModal"
+          >
+            취소
+          </button>
+
+          <button
+            class="password-submit-button"
+            type="submit"
+            :disabled="isChangingPassword"
+          >
+            {{
+              isChangingPassword
+                ? '변경 중...'
+                : '비밀번호 변경'
+            }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- 계정 관리 모달 -->
+  <div
+    v-if="isAccountModalOpen"
+    class="account-modal-backdrop"
+    @click.self="closeAccountModal"
+  >
+    <section
+      class="account-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-modal-title"
+    >
+      <header class="account-modal-header">
+        <div>
+          <p>ACCOUNT</p>
+
+          <h2 id="account-modal-title">
+            계정 관리
+          </h2>
+        </div>
+
+        <button
+          class="account-modal-close"
+          type="button"
+          aria-label="계정 관리 창 닫기"
+          @click="closeAccountModal"
+        >
+          ×
+        </button>
+      </header>
+
+      <div class="account-management-list">
+        <!-- 로그아웃 -->
+        <section class="account-management-item">
+          <div class="account-management-info">
+            <strong>로그아웃</strong>
+
+            <span>
+              현재 기기에서 로그아웃합니다.
+            </span>
+          </div>
+
+          <button
+            class="logout-button"
+            type="button"
+            :disabled="
+              isLoggingOut
+              || isDeletingAccount
+            "
+            @click="handleLogout"
+          >
+            {{
+              isLoggingOut
+                ? '로그아웃 중...'
+                : '로그아웃'
+            }}
+          </button>
+        </section>
+
+        <!-- 회원 탈퇴 -->
+        <section
+          class="account-management-item danger-item"
+        >
+          <div class="account-management-info">
+            <strong>회원 탈퇴</strong>
+
+            <span>
+              계정과 관련된 여행 정보를 삭제합니다.
+            </span>
+          </div>
+
+          <button
+            v-if="!isDeleteAccountFormOpen"
+            class="delete-account-open-button"
+            type="button"
+            :disabled="
+              isLoggingOut
+              || isDeletingAccount
+            "
+            @click="openDeleteAccountForm"
+          >
+            회원 탈퇴
+          </button>
+        </section>
+
+        <!-- 회원 탈퇴 확인 -->
+        <form
+          v-if="isDeleteAccountFormOpen"
+          class="delete-account-form"
+          @submit.prevent="submitDeleteAccount"
+        >
+          <div class="delete-account-warning">
+            <strong>
+              탈퇴 전 확인해 주세요
+            </strong>
+
+            <p>
+              회원 탈퇴 시 계정과 내가 만든 여행,
+              참여 및 초대 정보가 삭제됩니다.
+              삭제된 정보는 복구할 수 없습니다.
+            </p>
+          </div>
+
+          <div class="password-field">
+            <label for="delete-account-password">
+              현재 비밀번호
+            </label>
+
+            <input
+              id="delete-account-password"
+              v-model="deleteAccountPassword"
+              type="password"
+              autocomplete="current-password"
+              placeholder="현재 비밀번호"
+              :disabled="isDeletingAccount"
+            />
+          </div>
+
+          <p
+            v-if="accountErrorMessage"
+            class="password-error-message"
+          >
+            {{ accountErrorMessage }}
+          </p>
+
+          <div class="delete-account-actions">
+            <button
+              class="delete-account-cancel-button"
+              type="button"
+              :disabled="isDeletingAccount"
+              @click="closeDeleteAccountForm"
+            >
+              취소
+            </button>
+
+            <button
+              class="delete-account-submit-button"
+              type="submit"
+              :disabled="isDeletingAccount"
+            >
+              {{
+                isDeletingAccount
+                  ? '탈퇴 처리 중...'
+                  : '회원 탈퇴'
+              }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
 </template>
 
 <style scoped>
@@ -157,7 +749,8 @@ const menuItems: MyPageMenu[] = [
   border: 1px solid #e3e8ef;
   border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 5px 18px rgba(37, 54, 78, 0.06);
+  box-shadow: 0 5px 18px
+    rgba(37, 54, 78, 0.06);
 }
 
 .profile-avatar {
@@ -169,7 +762,12 @@ const menuItems: MyPageMenu[] = [
   height: 76px;
   border-radius: 50%;
   color: #ffffff;
-  background: linear-gradient(145deg, #7798be, #4e6688);
+  background:
+    linear-gradient(
+      145deg,
+      #7798be,
+      #4e6688
+    );
 }
 
 .profile-avatar span {
@@ -195,7 +793,8 @@ const menuItems: MyPageMenu[] = [
 
 .trip-summary {
   display: grid;
-  grid-template-columns: 1fr 1px 1fr 1px 1fr;
+  grid-template-columns:
+    1fr 1px 1fr 1px 1fr;
   align-items: center;
   margin-top: 18px;
   padding: 20px;
@@ -246,7 +845,8 @@ const menuItems: MyPageMenu[] = [
 
 .settings-item {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 24px;
+  grid-template-columns:
+    42px minmax(0, 1fr) 24px;
   align-items: center;
   gap: 14px;
   width: 100%;
@@ -313,6 +913,372 @@ const menuItems: MyPageMenu[] = [
   color: #a3abb5;
   text-align: right;
 }
+
+/* =========================
+   비밀번호 변경 모달
+========================= */
+
+.password-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    rgba(22, 29, 42, 0.48);
+}
+
+.password-modal {
+  width: min(440px, 100%);
+  padding: 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 24px 70px
+    rgba(26, 36, 53, 0.24);
+}
+
+.password-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.password-modal-header p {
+  margin: 0 0 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #4566e8;
+}
+
+.password-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #222934;
+}
+
+.password-modal-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  font-size: 23px;
+  line-height: 1;
+  color: #747e8c;
+  background: #f3f5f8;
+  cursor: pointer;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.password-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #495362;
+}
+
+.password-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid #dce2ea;
+  border-radius: 9px;
+  outline: none;
+  font-size: 12px;
+  color: #2c3440;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.password-field input:focus {
+  border-color: #5878e9;
+  box-shadow:
+    0 0 0 3px
+    rgba(88, 120, 233, 0.11);
+}
+
+.password-field input:disabled {
+  background: #f5f6f8;
+  cursor: not-allowed;
+}
+
+.password-error-message {
+  margin: -3px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #c74658;
+}
+
+.password-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.password-cancel-button,
+.password-submit-button {
+  height: 40px;
+  padding: 0 15px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.password-cancel-button {
+  border: 1px solid #dce2ea;
+  color: #66717f;
+  background: #ffffff;
+}
+
+.password-submit-button {
+  border: 0;
+  color: #ffffff;
+  background: #3565ef;
+}
+
+.password-submit-button:hover {
+  background: #2958df;
+}
+
+.password-cancel-button:disabled,
+.password-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* =========================
+   계정 관리 모달
+========================= */
+
+.account-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    rgba(22, 29, 42, 0.48);
+}
+
+.account-modal {
+  width: min(460px, 100%);
+  padding: 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 24px 70px
+    rgba(26, 36, 53, 0.24);
+}
+
+.account-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.account-modal-header p {
+  margin: 0 0 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #4566e8;
+}
+
+.account-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #222934;
+}
+
+.account-modal-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  font-size: 23px;
+  line-height: 1;
+  color: #747e8c;
+  background: #f3f5f8;
+  cursor: pointer;
+}
+
+.account-management-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+  border: 1px solid #e4e8ee;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.account-management-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 76px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.account-management-item
+  + .account-management-item {
+  border-top: 1px solid #edf0f4;
+}
+
+.account-management-info {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.account-management-info strong {
+  font-size: 13px;
+  color: #28313d;
+}
+
+.account-management-info span {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #939ca8;
+}
+
+.logout-button,
+.delete-account-open-button {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-button {
+  border: 1px solid #dce2ea;
+  color: #586575;
+  background: #ffffff;
+}
+
+.logout-button:hover {
+  background: #f6f8fa;
+}
+
+.delete-account-open-button {
+  border: 1px solid #efcbd0;
+  color: #c94b59;
+  background: #fffafa;
+}
+
+.delete-account-open-button:hover {
+  background: #fff2f3;
+}
+
+.logout-button:disabled,
+.delete-account-open-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.danger-item {
+  background: #fffdfd;
+}
+
+.delete-account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 17px;
+  border-top: 1px solid #edf0f4;
+  background: #fffafa;
+}
+
+.delete-account-warning {
+  padding: 13px;
+  border: 1px solid #f0d2d6;
+  border-radius: 9px;
+  background: #fff5f6;
+}
+
+.delete-account-warning strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #b63e4d;
+}
+
+.delete-account-warning p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.65;
+  color: #8b5c63;
+}
+
+.delete-account-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.delete-account-cancel-button,
+.delete-account-submit-button {
+  height: 39px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delete-account-cancel-button {
+  border: 1px solid #dce2ea;
+  color: #66717f;
+  background: #ffffff;
+}
+
+.delete-account-submit-button {
+  border: 0;
+  color: #ffffff;
+  background: #d94b5a;
+}
+
+.delete-account-submit-button:hover {
+  background: #c83d4c;
+}
+
+.delete-account-cancel-button:disabled,
+.delete-account-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* =========================
+   모바일
+========================= */
 
 @media (max-width: 760px) {
   .mypage-page {
@@ -382,7 +1348,8 @@ const menuItems: MyPageMenu[] = [
   }
 
   .settings-item {
-    grid-template-columns: 36px minmax(0, 1fr) 18px;
+    grid-template-columns:
+      36px minmax(0, 1fr) 18px;
     gap: 11px;
     min-height: 66px;
     padding: 11px 13px;
@@ -413,6 +1380,98 @@ const menuItems: MyPageMenu[] = [
 
   .settings-arrow {
     font-size: 20px;
+  }
+
+  /* 비밀번호 변경 */
+
+  .password-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .password-modal {
+    width: 100%;
+    padding: 20px 17px 24px;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .password-modal-header h2 {
+    font-size: 17px;
+  }
+
+  .password-form {
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .password-field input {
+    height: 42px;
+  }
+
+  .password-modal-actions {
+    margin-top: 6px;
+  }
+
+  .password-cancel-button,
+  .password-submit-button {
+    flex: 1;
+    height: 42px;
+  }
+
+  /* 계정 관리 */
+
+  .account-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .account-modal {
+    width: 100%;
+    padding: 20px 17px 24px;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .account-modal-header h2 {
+    font-size: 17px;
+  }
+
+  .account-management-list {
+    margin-top: 20px;
+  }
+
+  .account-management-item {
+    gap: 12px;
+    min-height: 72px;
+    padding: 14px;
+  }
+
+  .account-management-info strong {
+    font-size: 12px;
+  }
+
+  .account-management-info span {
+    font-size: 9px;
+  }
+
+  .logout-button,
+  .delete-account-open-button {
+    height: 34px;
+    padding: 0 11px;
+    font-size: 9px;
+  }
+
+  .delete-account-form {
+    padding: 14px;
+  }
+
+  .delete-account-actions {
+    margin-top: 2px;
+  }
+
+  .delete-account-cancel-button,
+  .delete-account-submit-button {
+    flex: 1;
+    height: 42px;
   }
 }
 </style>
