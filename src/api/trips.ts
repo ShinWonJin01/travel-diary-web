@@ -21,6 +21,13 @@ export interface Trip {
   createdAt: string
 }
 
+export type TripRole = 'OWNER' | 'MEMBER'
+
+export interface TripListItem extends Trip {
+  role: TripRole
+  participantCount: number
+}
+
 export async function createTrip(
   request: TripCreateRequest,
 ): Promise<Trip> {
@@ -28,6 +35,23 @@ export async function createTrip(
     method: 'POST',
     body: JSON.stringify(request),
   })
+}
+
+export async function getTrips(): Promise<TripListItem[]> {
+  return apiRequest<TripListItem[]>('/api/trips', {
+    method: 'GET',
+  })
+}
+
+export async function getTripDetail(
+  tripId: number,
+): Promise<Trip> {
+  return apiRequest<Trip>(
+    `/api/trips/${tripId}`,
+    {
+      method: 'GET',
+    },
+  )
 }
 
 export async function uploadTripCoverImage(

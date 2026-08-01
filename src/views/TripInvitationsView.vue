@@ -1,107 +1,220 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+
+import {
+  acceptInvitation as acceptInvitationApi,
+  cancelInvitation as cancelInvitationApi,
+  declineInvitation as declineInvitationApi,
+  getReceivedInvitations,
+  getSentInvitations,
+  type InvitationStatus,
+  type TripInvitation,
+} from '../api/invitations'
 
 type InvitationTab = 'received' | 'sent'
-type InvitationStatus = 'pending' | 'accepted' | 'declined'
-
-interface ReceivedInvitation {
-  id: number
-  title: string
-  inviterName: string
-  period: string
-  thumbnailClass: string
-}
-
-interface SentInvitation {
-  id: number
-  tripTitle: string
-  inviteeName: string
-  period: string
-  sentDate: string
-  status: InvitationStatus
-  thumbnailClass: string
-}
 
 const activeTab = ref<InvitationTab>('received')
 
-const receivedInvitations = ref<ReceivedInvitation[]>([
-  {
-    id: 1,
-    title: '유럽 배낭여행',
-    inviterName: '박지민',
-    period: '2024.05.01 - 05.15',
-    thumbnailClass: 'thumbnail-europe',
-  },
-])
+const receivedInvitations = ref<TripInvitation[]>([])
+const sentInvitations = ref<TripInvitation[]>([])
 
-const sentInvitations = ref<SentInvitation[]>([
-  {
-    id: 1,
-    tripTitle: '도쿄 여행',
-    inviteeName: '김민수',
-    period: '2024.04.10 - 04.14',
-    sentDate: '2024.04.01',
-    status: 'accepted',
-    thumbnailClass: 'thumbnail-tokyo',
-  },
-  {
-    id: 2,
-    tripTitle: '도쿄 여행',
-    inviteeName: '이지현',
-    period: '2024.04.10 - 04.14',
-    sentDate: '2024.04.02',
-    status: 'pending',
-    thumbnailClass: 'thumbnail-tokyo',
-  },
-  {
-    id: 3,
-    tripTitle: '제주도 가족여행',
-    inviteeName: '박유진',
-    period: '2024.03.20 - 03.23',
-    sentDate: '2024.03.10',
-    status: 'declined',
-    thumbnailClass: 'thumbnail-jeju',
-  },
-])
+const isLoading = ref(false)
+const processingInvitationId = ref<number | null>(null)
 
-const rejectInvitation = (invitationId: number) => {
-  receivedInvitations.value = receivedInvitations.value.filter(
-    (invitation) => invitation.id !== invitationId,
-  )
+const errorMessage = ref('')
+const successMessage = ref('')
+
+const clearMessages = () => {
+  errorMessage.value = ''
+  successMessage.value = ''
 }
 
-const acceptInvitation = (invitationId: number) => {
-  const invitation = receivedInvitations.value.find((item) => item.id === invitationId)
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message
+  }
 
-  if (!invitation) {
+  return '초대 정보를 처리하는 중 오류가 발생했습니다.'
+}
+
+const loadInvitations = async () => {
+  isLoading.value = true
+  clearMessages()
+
+  try {
+    const [received, sent] = await Promise.all([
+      getReceivedInvitations(),
+      getSentInvitations(),
+    ])
+
+    receivedInvitations.value = received
+    sentInvitations.value = sent
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleAcceptInvitation = async (
+  invitationId: number,
+) => {
+  if (processingInvitationId.value !== null) {
     return
   }
 
-  /*
-   * 추후 Pinia 또는 백엔드와 연결하면
-   * 수락한 여행을 여행 기록의 '참여 중' 목록에 추가합니다.
-   */
-  receivedInvitations.value = receivedInvitations.value.filter((item) => item.id !== invitationId)
+  processingInvitationId.value = invitationId
+  clearMessages()
+
+  try {
+    await acceptInvitationApi(invitationId)
+
+    receivedInvitations.value =
+      receivedInvitations.value.filter(
+        (invitation) =>
+          invitation.invitationId !== invitationId,
+      )
+
+    successMessage.value =
+      '여행 초대를 수락했습니다.'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    processingInvitationId.value = null
+  }
 }
 
-const cancelSentInvitation = (invitationId: number) => {
-  sentInvitations.value = sentInvitations.value.filter(
-    (invitation) => invitation.id !== invitationId,
+const handleDeclineInvitation = async (
+  invitationId: number,
+) => {
+  if (processingInvitationId.value !== null) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    '이 여행 초대를 거절하시겠습니까?',
   )
+
+  if (!confirmed) {
+    return
+  }
+
+  processingInvitationId.value = invitationId
+  clearMessages()
+
+  try {
+    await declineInvitationApi(invitationId)
+
+    receivedInvitations.value =
+      receivedInvitations.value.filter(
+        (invitation) =>
+          invitation.invitationId !== invitationId,
+      )
+
+    successMessage.value =
+      '여행 초대를 거절했습니다.'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    processingInvitationId.value = null
+  }
 }
 
-const getStatusLabel = (status: InvitationStatus) => {
+const handleCancelSentInvitation = async (
+  invitationId: number,
+) => {
+  if (processingInvitationId.value !== null) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    '보낸 초대를 취소하시겠습니까?',
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  processingInvitationId.value = invitationId
+  clearMessages()
+
+  try {
+    await cancelInvitationApi(invitationId)
+
+    sentInvitations.value =
+      sentInvitations.value.filter(
+        (invitation) =>
+          invitation.invitationId !== invitationId,
+      )
+
+    successMessage.value =
+      '보낸 초대를 취소했습니다.'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    processingInvitationId.value = null
+  }
+}
+
+const formatDate = (date: string) => {
+  return date.replaceAll('-', '.')
+}
+
+const formatPeriod = (
+  startDate: string,
+  endDate: string | null,
+) => {
+  const formattedStartDate = formatDate(startDate)
+
+  if (!endDate) {
+    return `${formattedStartDate} - 종료일 미정`
+  }
+
+  return `${formattedStartDate} - ${formatDate(endDate)}`
+}
+
+const formatSentDate = (createdAt: string) => {
+  return formatDate(createdAt.slice(0, 10))
+}
+
+const getStatusLabel = (
+  status: InvitationStatus,
+) => {
   switch (status) {
-    case 'accepted':
+    case 'ACCEPTED':
       return '수락 완료'
 
-    case 'declined':
+    case 'DECLINED':
       return '거절'
 
     default:
       return '응답 대기'
   }
 }
+
+const getStatusClass = (
+  status: InvitationStatus,
+) => {
+  return status.toLowerCase()
+}
+
+const getThumbnailClass = (
+  invitation: TripInvitation,
+) => {
+  const thumbnailClasses = [
+    'thumbnail-europe',
+    'thumbnail-tokyo',
+    'thumbnail-jeju',
+  ]
+
+  return thumbnailClasses[
+    invitation.tripId % thumbnailClasses.length
+  ]
+}
+
+onMounted(() => {
+  void loadInvitations()
+})
 </script>
 
 <template>
@@ -134,42 +247,112 @@ const getStatusLabel = (status: InvitationStatus) => {
     </div>
 
     <div class="page-content">
+      <p
+        v-if="errorMessage"
+        class="feedback-message error-message"
+      >
+        {{ errorMessage }}
+      </p>
+
+      <p
+        v-if="successMessage"
+        class="feedback-message success-message"
+      >
+        {{ successMessage }}
+      </p>
+
+      <div
+        v-if="isLoading"
+        class="loading-state"
+      >
+        초대 정보를 불러오는 중입니다.
+      </div>
+
       <!-- 받은 초대 -->
-      <section v-if="activeTab === 'received'" class="content-section received-invitation-section">
+      <section
+        v-else-if="activeTab === 'received'"
+        class="content-section received-invitation-section"
+      >
         <h2 class="section-title">받은 초대</h2>
 
-        <div v-if="receivedInvitations.length > 0" class="received-invitation-list">
+        <div
+          v-if="receivedInvitations.length > 0"
+          class="received-invitation-list"
+        >
           <article
             v-for="invitation in receivedInvitations"
-            :key="invitation.id"
+            :key="invitation.invitationId"
             class="received-invitation-card"
           >
             <div class="received-invitation-summary">
               <div
                 class="trip-thumbnail received-invitation-thumbnail"
-                :class="invitation.thumbnailClass"
+                :class="getThumbnailClass(invitation)"
               >
-                <span class="thumbnail-mountain mountain-back"></span>
-                <span class="thumbnail-mountain mountain-front"></span>
+                <span
+                  class="thumbnail-mountain mountain-back"
+                ></span>
+                <span
+                  class="thumbnail-mountain mountain-front"
+                ></span>
                 <span class="thumbnail-sun"></span>
               </div>
 
               <div class="received-invitation-information">
-                <h3>{{ invitation.title }}</h3>
+                <h3>{{ invitation.tripTitle }}</h3>
 
-                <p>{{ invitation.inviterName }}님이 초대했습니다.</p>
+                <p>
+                  {{ invitation.inviterNickname }}님이
+                  초대했습니다.
+                </p>
 
-                <span>{{ invitation.period }}</span>
+                <span>
+                  {{
+                    formatPeriod(
+                      invitation.startDate,
+                      invitation.endDate,
+                    )
+                  }}
+                </span>
               </div>
             </div>
 
             <div class="received-invitation-actions">
-              <button class="reject-button" type="button" @click="rejectInvitation(invitation.id)">
+              <button
+                class="reject-button"
+                type="button"
+                :disabled="
+                  processingInvitationId ===
+                  invitation.invitationId
+                "
+                @click="
+                  handleDeclineInvitation(
+                    invitation.invitationId,
+                  )
+                "
+              >
                 거절
               </button>
 
-              <button class="accept-button" type="button" @click="acceptInvitation(invitation.id)">
-                수락
+              <button
+                class="accept-button"
+                type="button"
+                :disabled="
+                  processingInvitationId ===
+                  invitation.invitationId
+                "
+                @click="
+                  handleAcceptInvitation(
+                    invitation.invitationId,
+                  )
+                "
+              >
+                {{
+                  processingInvitationId ===
+                  invitation.invitationId
+                    ? '처리 중'
+                    : '수락'
+                }}
               </button>
             </div>
           </article>
@@ -177,55 +360,97 @@ const getStatusLabel = (status: InvitationStatus) => {
 
         <div v-else class="empty-state">
           <p>받은 여행 초대가 없습니다.</p>
-          <span> 친구가 여행에 초대하면 이곳에서 확인할 수 있습니다. </span>
+          <span>
+            친구가 여행에 초대하면 이곳에서 확인할 수
+            있습니다.
+          </span>
         </div>
       </section>
 
       <!-- 보낸 초대 -->
-      <section v-else class="content-section sent-invitation-section">
+      <section
+        v-else
+        class="content-section sent-invitation-section"
+      >
         <h2 class="section-title">보낸 초대</h2>
 
-        <div v-if="sentInvitations.length > 0" class="sent-invitation-list">
+        <div
+          v-if="sentInvitations.length > 0"
+          class="sent-invitation-list"
+        >
           <article
             v-for="invitation in sentInvitations"
-            :key="invitation.id"
+            :key="invitation.invitationId"
             class="sent-invitation-card"
           >
             <div class="sent-invitation-summary">
               <div
                 class="trip-thumbnail sent-invitation-thumbnail"
-                :class="invitation.thumbnailClass"
+                :class="getThumbnailClass(invitation)"
               >
-                <span class="thumbnail-mountain mountain-back"></span>
-                <span class="thumbnail-mountain mountain-front"></span>
+                <span
+                  class="thumbnail-mountain mountain-back"
+                ></span>
+                <span
+                  class="thumbnail-mountain mountain-front"
+                ></span>
                 <span class="thumbnail-sun"></span>
               </div>
 
               <div class="sent-invitation-information">
                 <h3>{{ invitation.tripTitle }}</h3>
 
-                <p>{{ invitation.inviteeName }}님에게 보낸 초대</p>
+                <p>
+                  {{ invitation.inviteeNickname }}님에게 보낸
+                  초대
+                </p>
 
                 <span class="sent-trip-period">
-                  {{ invitation.period }}
+                  {{
+                    formatPeriod(
+                      invitation.startDate,
+                      invitation.endDate,
+                    )
+                  }}
                 </span>
 
-                <span class="sent-date"> 보낸 날짜 {{ invitation.sentDate }} </span>
+                <span class="sent-date">
+                  보낸 날짜
+                  {{ formatSentDate(invitation.createdAt) }}
+                </span>
               </div>
             </div>
 
             <div class="sent-invitation-state">
-              <span class="status-badge" :class="invitation.status">
+              <span
+                class="status-badge"
+                :class="
+                  getStatusClass(invitation.status)
+                "
+              >
                 {{ getStatusLabel(invitation.status) }}
               </span>
 
               <button
-                v-if="invitation.status === 'pending'"
+                v-if="invitation.status === 'PENDING'"
                 class="cancel-invitation-button"
                 type="button"
-                @click="cancelSentInvitation(invitation.id)"
+                :disabled="
+                  processingInvitationId ===
+                  invitation.invitationId
+                "
+                @click="
+                  handleCancelSentInvitation(
+                    invitation.invitationId,
+                  )
+                "
               >
-                초대 취소
+                {{
+                  processingInvitationId ===
+                  invitation.invitationId
+                    ? '처리 중'
+                    : '초대 취소'
+                }}
               </button>
             </div>
           </article>
@@ -233,7 +458,9 @@ const getStatusLabel = (status: InvitationStatus) => {
 
         <div v-else class="empty-state">
           <p>보낸 여행 초대가 없습니다.</p>
-          <span> 내가 만든 여행에서 친구를 초대해 보세요. </span>
+          <span>
+            내가 만든 여행에서 친구를 초대해 보세요.
+          </span>
         </div>
       </section>
     </div>
@@ -711,4 +938,38 @@ const getStatusLabel = (status: InvitationStatus) => {
     font-size: 9px;
   }
 }
+
+.feedback-message {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.error-message {
+  color: #b42318;
+  background: #fef3f2;
+}
+
+.success-message {
+  color: #18794e;
+  background: #ecfdf3;
+}
+
+.loading-state {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  border: 1px dashed #d6dce4;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #747d89;
+}
+
+.received-invitation-actions button:disabled,
+.cancel-invitation-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 </style>

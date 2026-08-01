@@ -1,5 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { getStoredMember } from '@/api/auth'
+import { ApiError, apiRequest } from '@/api/http'
+import {
+  getTripDetail,
+  getTrips,
+  type Trip,
+  type TripListItem,
+} from '@/api/trips'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 type TripTab = 'overview' | 'timeline' | 'photos' | 'map' | 'ai-diary'
@@ -40,38 +54,202 @@ interface Participant {
 const route = useRoute()
 const router = useRouter()
 
-const tripTitle = '도쿄 여행'
-const tripDestination = '일본 도쿄'
-const tripPeriod = '2024.04.10 - 2024.04.14'
-const tripDuration = '4박 5일'
+const trip = ref<Trip | null>(null)
+const tripListItem = ref<TripListItem | null>(null)
+const isLoading = ref(true)
+const errorMessage = ref('')
+const isCoverImageBroken = ref(false)
+
+const currentMember = getStoredMember()
+
+const isParticipantModalOpen = ref(false)
+const inviteNickname = ref('')
+const isInviting = ref(false)
+const invitationMessage = ref('')
+const invitationErrorMessage = ref('')
+
+const tripId = computed<number | null>(() => {
+  const routeId = Array.isArray(route.params.id)
+    ? route.params.id[0]
+    : route.params.id
+
+  const parsedId = Number(routeId)
+
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    return null
+  }
+
+  return parsedId
+})
+
+const formatDate = (date: string) => {
+  return date.replaceAll('-', '.')
+}
+
+const toUtcTimestamp = (date: string) => {
+  const [yearText, monthText, dayText] =
+    date.split('-')
+
+  if (!yearText || !monthText || !dayText) {
+    return null
+  }
+
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return null
+  }
+
+  return Date.UTC(year, month - 1, day)
+}
+
+const tripTitle = computed(() => {
+  return trip.value?.title ?? '여행 상세'
+})
+
+const tripDestination = computed(() => {
+  return trip.value?.destination ?? ''
+})
+
+const tripPeriod = computed(() => {
+  if (!trip.value) {
+    return ''
+  }
+
+  const startDate = formatDate(trip.value.startDate)
+
+  if (!trip.value.endDate) {
+    return `${startDate} - 종료일 미정`
+  }
+
+  return `${startDate} - ${formatDate(trip.value.endDate)}`
+})
+
+const tripDuration = computed(() => {
+  if (!trip.value) {
+    return ''
+  }
+
+  if (!trip.value.endDate) {
+    return '종료일 미정'
+  }
+
+  const startTimestamp =
+    toUtcTimestamp(trip.value.startDate)
+
+  const endTimestamp =
+    toUtcTimestamp(trip.value.endDate)
+
+  if (
+    startTimestamp === null ||
+    endTimestamp === null
+  ) {
+    return '-'
+  }
+
+  const millisecondsPerDay =
+    24 * 60 * 60 * 1000
+
+  const nights = Math.max(
+    Math.round(
+      (endTimestamp - startTimestamp) /
+        millisecondsPerDay,
+    ),
+    0,
+  )
+
+  return `${nights}박 ${nights + 1}일`
+})
+
+const tripDescription = computed(() => {
+  return trip.value?.description.trim() ?? ''
+})
+
+const backendBaseUrl = (() => {
+  const configuredUrl =
+    import.meta.env.VITE_API_BASE_URL as
+      | string
+      | undefined
+
+  if (
+    !configuredUrl
+    || configuredUrl.startsWith('/')
+  ) {
+    return 'http://localhost:8080'
+  }
+
+  return configuredUrl
+    .replace(/\/api\/?$/, '')
+    .replace(/\/$/, '')
+})()
+
+const coverImageUrl = computed(() => {
+  const path =
+    trip.value?.coverImagePath
+
+  if (
+    !path
+    || isCoverImageBroken.value
+  ) {
+    return ''
+  }
+
+  if (
+    path.startsWith('http://')
+    || path.startsWith('https://')
+  ) {
+    return path
+  }
+
+  const cleanedPath =
+    path.replaceAll('\\', '/')
+
+  const normalizedPath =
+    cleanedPath.startsWith('/')
+      ? cleanedPath
+      : `/${cleanedPath}`
+
+  return `${backendBaseUrl}${normalizedPath}`
+})
+
+watch(
+  () => trip.value?.coverImagePath,
+  () => {
+    isCoverImageBroken.value = false
+  },
+)
 
 /*
- * 현재는 화면 확인용 임시 데이터입니다.
- * 백엔드 연결 후 여행 상세 API의 참여자 데이터로 교체합니다.
+ * 현재 상세 API에는 전체 참여자 목록이 없으므로,
+ * 실제 DB 응답에 포함된 여행 생성자만 우선 표시합니다.
+ * 참여자 API를 연결하면 이 computed를 교체합니다.
  */
-const participants = ref<Participant[]>([
-  {
-    id: 1,
-    nickname: '원진',
-    profileImageUrl: null,
-    avatarClass: 'avatar-blue',
-  },
-  {
-    id: 2,
-    nickname: '민수',
-    profileImageUrl: null,
-    avatarClass: 'avatar-green',
-  },
-  {
-    id: 3,
-    nickname: '지연',
-    profileImageUrl: null,
-    avatarClass: 'avatar-orange',
-  },
-])
+const participants = computed<Participant[]>(() => {
+  if (!trip.value) {
+    return []
+  }
+
+  return [
+    {
+      id: trip.value.ownerId,
+      nickname: trip.value.ownerNickname,
+      profileImageUrl: null,
+      avatarClass: 'avatar-blue',
+    },
+  ]
+})
 
 const participantCount = computed(() => {
-  return participants.value.length
+  return (
+    tripListItem.value?.participantCount
+    ?? participants.value.length
+  )
 })
 
 const visibleParticipants = computed(() => {
@@ -79,8 +257,81 @@ const visibleParticipants = computed(() => {
 })
 
 const remainingParticipantCount = computed(() => {
-  return Math.max(participants.value.length - 4, 0)
+  return Math.max(
+    participantCount.value
+      - visibleParticipants.value.length,
+    0,
+  )
 })
+
+const isOwner = computed(() => {
+  if (!trip.value) {
+    return false
+  }
+
+  if (tripListItem.value) {
+    return tripListItem.value.role === 'OWNER'
+  }
+
+  return currentMember?.id === trip.value.ownerId
+})
+
+const loadTrip = async () => {
+  if (tripId.value === null) {
+    trip.value = null
+    tripListItem.value = null
+    errorMessage.value =
+      '올바르지 않은 여행 주소입니다.'
+    isLoading.value = false
+    return
+  }
+
+  isLoading.value = true
+  errorMessage.value = ''
+  isCoverImageBroken.value = false
+
+  try {
+    const [tripDetail, tripItems] =
+      await Promise.all([
+        getTripDetail(tripId.value),
+        getTrips().catch(() => []),
+      ])
+
+    trip.value = tripDetail
+
+    tripListItem.value =
+      tripItems.find(
+        (item) => item.id === tripId.value,
+      ) ?? null
+  } catch (error: unknown) {
+    trip.value = null
+    tripListItem.value = null
+
+    if (error instanceof ApiError) {
+      errorMessage.value = error.message
+      return
+    }
+
+    errorMessage.value =
+      '여행 정보를 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleCoverImageError = () => {
+  isCoverImageBroken.value = true
+}
+
+watch(
+  () => route.params.id,
+  () => {
+    void loadTrip()
+  },
+  {
+    immediate: true,
+  },
+)
 
 const tabs: TabItem[] = [
   { id: 'overview', label: '개요', icon: 'home' },
@@ -239,7 +490,7 @@ const handlePhotoSelect = (event: Event) => {
   input.value = ''
 }
 
-/* PC 점 3개 메뉴 */
+/* 여행 더보기 메뉴 */
 const isTripMenuOpen = ref(false)
 
 const openTripMenu = () => {
@@ -248,6 +499,126 @@ const openTripMenu = () => {
 
 const closeTripMenu = () => {
   isTripMenuOpen.value = false
+}
+
+const closeTripMenuOnOutsideClick = (
+  event: MouseEvent,
+) => {
+  if (!isTripMenuOpen.value) {
+    return
+  }
+
+  const target = event.target
+
+  if (!(target instanceof Element)) {
+    return
+  }
+
+  if (target.closest('.trip-more-wrapper')) {
+    return
+  }
+
+  closeTripMenu()
+}
+
+onMounted(() => {
+  document.addEventListener(
+    'click',
+    closeTripMenuOnOutsideClick,
+  )
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener(
+    'click',
+    closeTripMenuOnOutsideClick,
+  )
+})
+
+const openParticipantModal = () => {
+  closeTripMenu()
+  invitationMessage.value = ''
+  invitationErrorMessage.value = ''
+  isParticipantModalOpen.value = true
+}
+
+const closeParticipantModal = () => {
+  if (isInviting.value) {
+    return
+  }
+
+  isParticipantModalOpen.value = false
+  invitationMessage.value = ''
+  invitationErrorMessage.value = ''
+}
+
+const sendInvitation = async () => {
+  const nickname = inviteNickname.value.trim()
+
+  if (!nickname) {
+    invitationErrorMessage.value =
+      '초대할 회원의 닉네임을 입력해 주세요.'
+    invitationMessage.value = ''
+    return
+  }
+
+  if (tripId.value === null) {
+    invitationErrorMessage.value =
+      '여행 정보를 확인할 수 없습니다.'
+    invitationMessage.value = ''
+    return
+  }
+
+  isInviting.value = true
+  invitationMessage.value = ''
+  invitationErrorMessage.value = ''
+
+  try {
+    await apiRequest(
+      `/api/trips/${tripId.value}/invitations`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          nickname,
+        }),
+      },
+    )
+
+    inviteNickname.value = ''
+    invitationMessage.value =
+      '여행 초대를 보냈습니다.'
+  } catch (error: unknown) {
+    invitationErrorMessage.value =
+      error instanceof ApiError
+        ? error.message
+        : '초대를 보내지 못했습니다.'
+  } finally {
+    isInviting.value = false
+  }
+}
+
+const openTripEdit = () => {
+  closeTripMenu()
+
+  window.alert(
+    '여행 정보 수정 API와 수정 화면을 만든 뒤 이 버튼에 연결합니다.',
+  )
+}
+
+const handleDeleteTrip = () => {
+  closeTripMenu()
+
+  window.alert(
+    '여행 삭제 API를 만든 뒤 이 메뉴에 연결합니다.',
+  )
+}
+
+const handleLeaveTrip = () => {
+  closeTripMenu()
+
+  window.alert(
+    '여행 나가기 API를 만든 뒤 이 메뉴에 연결합니다.',
+  )
 }
 
 const getTabIconPath = (icon: string) => {
@@ -275,7 +646,33 @@ const getTabIconPath = (icon: string) => {
 
 <template>
   <main class="trip-detail-page">
-    <div class="detail-layout">
+    <section
+      v-if="isLoading"
+      class="detail-state-card"
+    >
+      <span class="detail-state-spinner"></span>
+      <p>여행 정보를 불러오는 중입니다.</p>
+    </section>
+
+    <section
+      v-else-if="errorMessage"
+      class="detail-state-card detail-error-card"
+    >
+      <h1>여행 정보를 불러오지 못했습니다.</h1>
+      <p>{{ errorMessage }}</p>
+
+      <button
+        type="button"
+        @click="loadTrip"
+      >
+        다시 시도
+      </button>
+    </section>
+
+    <div
+      v-else-if="trip"
+      class="detail-layout"
+    >
       <!-- PC 좌측 사이드바 -->
       <aside class="detail-sidebar">
         <div class="sidebar-trip-info">
@@ -327,7 +724,34 @@ const getTabIconPath = (icon: string) => {
         >
           <!-- 여행 기본 정보 -->
           <section class="trip-info-card">
-            <div class="trip-info-content">
+            <!-- 위쪽: 대표 이미지와 핵심 정보 -->
+            <div class="trip-info-top">
+              <div
+                class="trip-cover-preview"
+                :class="{
+                  'trip-cover-preview-empty':
+                    !coverImageUrl,
+                }"
+              >
+                <img
+                  v-if="coverImageUrl"
+                  :src="coverImageUrl"
+                  :alt="`${tripTitle} 대표 이미지`"
+                  @error="handleCoverImageError"
+                />
+
+                <svg
+                  v-else
+                  viewBox="0 0 64 52"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 48 22 26l10 12 9-11 19 21z"
+                  />
+                  <circle cx="45" cy="14" r="7" />
+                </svg>
+              </div>
+
               <div class="trip-info-main">
                 <span class="trip-info-label">
                   여행 기본 정보
@@ -336,8 +760,85 @@ const getTabIconPath = (icon: string) => {
                 <h2>{{ tripDestination }}</h2>
 
                 <p>{{ tripPeriod }}</p>
+
+                <p
+                  v-if="tripDescription"
+                  class="trip-description"
+                >
+                  {{ tripDescription }}
+                </p>
               </div>
 
+              <div class="trip-top-actions">
+                <button
+                  v-if="isOwner"
+                  class="trip-edit-button"
+                  type="button"
+                  aria-label="여행 정보 수정"
+                  @click="openTripEdit"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16z"
+                    />
+                    <path d="m13.5 6.5 4 4" />
+                  </svg>
+
+                  <span>수정</span>
+                </button>
+
+                <div class="trip-more-wrapper">
+                  <button
+                    class="trip-more-button"
+                    type="button"
+                    aria-label="여행 메뉴 열기"
+                    aria-haspopup="menu"
+                    :aria-expanded="isTripMenuOpen"
+                    @click="openTripMenu"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="5" r="1.3" />
+                      <circle cx="12" cy="12" r="1.3" />
+                      <circle cx="12" cy="19" r="1.3" />
+                    </svg>
+                  </button>
+
+                  <div
+                    v-if="isTripMenuOpen"
+                    class="trip-menu-popup"
+                    role="menu"
+                  >
+                    <button
+                      v-if="isOwner"
+                      class="danger-menu-item"
+                      type="button"
+                      role="menuitem"
+                      @click="handleDeleteTrip"
+                    >
+                      여행 삭제
+                    </button>
+
+                    <button
+                      v-else
+                      type="button"
+                      role="menuitem"
+                      @click="handleLeaveTrip"
+                    >
+                      여행 나가기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 아래쪽: 메타 정보와 주요 기능 -->
+            <div class="trip-info-bottom">
               <div class="trip-info-meta">
                 <div class="trip-info-item">
                   <span>여행 기간</span>
@@ -347,24 +848,112 @@ const getTabIconPath = (icon: string) => {
                 <div class="trip-info-divider"></div>
 
                 <div class="trip-info-item">
-                  <span>참여자</span>
-                  <strong>{{ participantCount }}명</strong>
+                  <span>여행 생성자</span>
+                  <strong>{{ trip.ownerNickname }}</strong>
+                </div>
+
+                <div
+                  class="
+                    trip-info-divider
+                    desktop-participant-divider
+                  "
+                ></div>
+
+                <div class="desktop-participant-item">
+                  <span class="desktop-participant-label">
+                    참여자
+                  </span>
+
+                  <button
+                    class="desktop-participant-summary"
+                    type="button"
+                    @click="openParticipantModal"
+                  >
+                    <span
+                      class="participant-avatars"
+                      aria-hidden="true"
+                    >
+                      <span
+                        v-for="participant in visibleParticipants"
+                        :key="participant.id"
+                        class="participant-avatar"
+                        :class="participant.avatarClass"
+                      >
+                        <img
+                          v-if="participant.profileImageUrl"
+                          :src="participant.profileImageUrl"
+                          :alt="`${participant.nickname} 프로필`"
+                        />
+
+                        <span v-else>
+                          {{ participant.nickname.slice(0, 1) }}
+                        </span>
+                      </span>
+
+                      <span
+                        v-if="remainingParticipantCount > 0"
+                        class="
+                          participant-avatar
+                          remaining-avatar
+                        "
+                      >
+                        +{{ remainingParticipantCount }}
+                      </span>
+                    </span>
+
+                    <strong>
+                      {{ participantCount }}명
+                    </strong>
+                  </button>
                 </div>
               </div>
-            </div>
 
-            <!-- PC 참여자 및 여행 기능 -->
-            <div class="trip-toolbar">
-              <div
-                class="participant-avatars"
-                aria-label="여행 참여자"
-              >
+              <div class="trip-info-actions">
                 <button
+                  v-if="isOwner"
+                  class="desktop-invite-button"
+                  type="button"
+                  @click="openParticipantModal"
+                >
+                  + 초대
+                </button>
+
+                <button
+                  class="desktop-photo-button"
+                  type="button"
+                  @click="openPhotoUpload"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+
+                  <span>사진 추가</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 모바일 참여자 영역 -->
+          <section class="mobile-participant-card">
+            <button
+              class="mobile-participant-summary"
+              type="button"
+              @click="openParticipantModal"
+            >
+              <span class="mobile-participant-label">
+                참여자
+                <strong>{{ participantCount }}명</strong>
+              </span>
+
+              <span class="mobile-participant-avatars">
+                <span
                   v-for="participant in visibleParticipants"
                   :key="participant.id"
                   class="participant-avatar"
                   :class="participant.avatarClass"
-                  type="button"
                   :title="participant.nickname"
                 >
                   <img
@@ -376,69 +965,25 @@ const getTabIconPath = (icon: string) => {
                   <span v-else>
                     {{ participant.nickname.slice(0, 1) }}
                   </span>
-                </button>
+                </span>
 
-                <button
+                <span
                   v-if="remainingParticipantCount > 0"
                   class="participant-avatar remaining-avatar"
-                  type="button"
-                  :title="`추가 참여자 ${remainingParticipantCount}명`"
                 >
                   +{{ remainingParticipantCount }}
-                </button>
-              </div>
+                </span>
+              </span>
+            </button>
 
-              <button
-                class="desktop-photo-button"
-                type="button"
-                @click="openPhotoUpload"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-
-                <span>사진 추가</span>
-              </button>
-
-              <div class="trip-more-wrapper">
-                <button
-                  class="trip-more-button"
-                  type="button"
-                  aria-label="여행 메뉴 열기"
-                  aria-haspopup="menu"
-                  :aria-expanded="isTripMenuOpen"
-                  @click="openTripMenu"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="5" r="1.3" />
-                    <circle cx="12" cy="12" r="1.3" />
-                    <circle cx="12" cy="19" r="1.3" />
-                  </svg>
-                </button>
-
-                <div
-                  v-if="isTripMenuOpen"
-                  class="trip-menu-popup"
-                  role="menu"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    @click="closeTripMenu"
-                  >
-                    여행 정보 수정
-                  </button>
-
-                  <button
-                    type="button"
-                    role="menuitem"
-                    @click="closeTripMenu"
-                  >
-                    참여자 관리
-                  </button>
-                </div>
-              </div>
-            </div>
+            <button
+              v-if="isOwner"
+              class="mobile-invite-button"
+              type="button"
+              @click="openParticipantModal"
+            >
+              + 초대
+            </button>
           </section>
 
           <!-- 지도 미리보기 -->
@@ -656,8 +1201,133 @@ const getTabIconPath = (icon: string) => {
       </section>
     </div>
 
+    <!-- 참여자 관리 및 초대 모달 -->
+    <div
+      v-if="isParticipantModalOpen"
+      class="participant-modal-backdrop"
+      @click.self="closeParticipantModal"
+    >
+      <section
+        class="participant-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="participant-modal-title"
+      >
+        <header class="participant-modal-header">
+          <div>
+            <p>TRIP MEMBERS</p>
+            <h2 id="participant-modal-title">
+              참여자 관리
+            </h2>
+          </div>
+
+          <button
+            class="participant-modal-close"
+            type="button"
+            aria-label="참여자 관리 닫기"
+            @click="closeParticipantModal"
+          >
+            ×
+          </button>
+        </header>
+
+        <div class="participant-modal-summary">
+          <strong>
+            현재 참여자 {{ participantCount }}명
+          </strong>
+
+          <span>
+            여행 생성자와 초대를 수락한 회원이 포함됩니다.
+          </span>
+        </div>
+
+        <div class="participant-modal-list">
+          <article
+            v-for="participant in participants"
+            :key="participant.id"
+          >
+            <span
+              class="participant-avatar"
+              :class="participant.avatarClass"
+            >
+              {{ participant.nickname.slice(0, 1) }}
+            </span>
+
+            <div>
+              <strong>{{ participant.nickname }}</strong>
+              <span>
+                {{
+                  participant.id === trip?.ownerId
+                    ? '여행 생성자'
+                    : '참여자'
+                }}
+              </span>
+            </div>
+          </article>
+
+          <p
+            v-if="
+              participantCount
+                > participants.length
+            "
+            class="participant-list-guide"
+          >
+            나머지 참여자 {{ participantCount - participants.length }}명의
+            닉네임은 참여자 목록 API를 추가한 뒤 표시됩니다.
+          </p>
+        </div>
+
+        <form
+          v-if="isOwner"
+          class="participant-invite-form"
+          @submit.prevent="sendInvitation"
+        >
+          <label for="invite-nickname">
+            친구 초대
+          </label>
+
+          <div class="participant-invite-row">
+            <input
+              id="invite-nickname"
+              v-model="inviteNickname"
+              type="text"
+              maxlength="20"
+              placeholder="초대할 회원의 닉네임"
+              :disabled="isInviting"
+            />
+
+            <button
+              type="submit"
+              :disabled="isInviting"
+            >
+              {{
+                isInviting
+                  ? '보내는 중'
+                  : '초대 보내기'
+              }}
+            </button>
+          </div>
+
+          <p
+            v-if="invitationMessage"
+            class="participant-action-message"
+          >
+            {{ invitationMessage }}
+          </p>
+
+          <p
+            v-if="invitationErrorMessage"
+            class="participant-action-error"
+          >
+            {{ invitationErrorMessage }}
+          </p>
+        </form>
+      </section>
+    </div>
+
     <!-- 숨겨진 사진 선택창 -->
     <input
+      v-if="trip"
       ref="photoInputRef"
       class="photo-file-input"
       type="file"
@@ -668,7 +1338,7 @@ const getTabIconPath = (icon: string) => {
 
     <!-- 모바일 사진 추가 버튼 -->
     <button
-      v-if="showMobilePhotoButton"
+      v-if="trip && showMobilePhotoButton"
       class="mobile-floating-button"
       type="button"
       @click="openPhotoUpload"
@@ -683,6 +1353,61 @@ const getTabIconPath = (icon: string) => {
   min-height: 100vh;
   padding: 24px 24px 80px;
   background: #f6f7fb;
+}
+
+
+.detail-state-card {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: 720px;
+  margin: 48px auto 0;
+  padding: 30px;
+  border: 1px solid #e6eaf2;
+  border-radius: 14px;
+  color: #687383;
+  background: #ffffff;
+}
+
+.detail-state-card p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.detail-state-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #dfe6f7;
+  border-top-color: #3464ee;
+  border-radius: 50%;
+  animation: detail-spin 0.8s linear infinite;
+}
+
+.detail-error-card h1 {
+  margin: 0;
+  font-size: 19px;
+  color: #252c37;
+}
+
+.detail-error-card button {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #3464ee;
+  cursor: pointer;
+}
+
+@keyframes detail-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .detail-layout {
@@ -765,26 +1490,51 @@ const getTabIconPath = (icon: string) => {
 .trip-info-card {
   display: flex;
   grid-column: 1 / -1;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
+  flex-direction: column;
   padding: 18px 20px;
   border: 1px solid #e6eaf2;
   border-radius: 14px;
   background: #ffffff;
 }
 
-.trip-info-content {
+.trip-info-top {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 20px;
+}
+
+.trip-cover-preview {
   display: flex;
-  min-width: 0;
-  flex: 1;
+  width: 94px;
+  height: 94px;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 28px;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #edf1f5;
+}
+
+.trip-cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trip-cover-preview svg {
+  width: 42px;
+  fill: #ffffff;
+  opacity: 0.9;
+}
+
+.trip-cover-preview-empty {
+  background: linear-gradient(145deg, #a8bcd2, #7896b6);
 }
 
 .trip-info-main {
   min-width: 0;
+  padding-top: 2px;
 }
 
 .trip-info-label {
@@ -807,21 +1557,82 @@ const getTabIconPath = (icon: string) => {
   color: #8a93a0;
 }
 
+.trip-info-main .trip-description {
+  max-width: 620px;
+  margin-top: 9px;
+  overflow: hidden;
+  line-height: 1.55;
+  color: #5f6875;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trip-edit-button {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #596575;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.trip-edit-button:hover {
+  color: #315fe8;
+  border-color: #bdcaef;
+  background: #f4f7ff;
+}
+
+.trip-edit-button svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.trip-info-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid #edf0f4;
+}
+
 .trip-info-meta {
   display: flex;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 1;
   align-items: center;
-  gap: 20px;
+  gap: 22px;
 }
 
 .trip-info-item {
   display: flex;
-  min-width: 70px;
+  min-width: 78px;
   flex-direction: column;
   gap: 6px;
 }
 
-.trip-info-item span {
+.trip-info-item span,
+.desktop-participant-label {
   font-size: 10px;
   color: #929aa5;
 }
@@ -834,20 +1645,36 @@ const getTabIconPath = (icon: string) => {
 .trip-info-divider {
   width: 1px;
   height: 34px;
+  flex: 0 0 auto;
   background: #e6eaf0;
 }
 
 /* =========================
-   PC 참여자 및 여행 기능
+   참여자 및 여행 기능
 ========================= */
-.trip-toolbar {
-  position: relative;
+.desktop-participant-item {
   display: flex;
-  flex: 0 0 auto;
+  min-width: 150px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.desktop-participant-summary {
+  display: inline-flex;
+  width: fit-content;
   align-items: center;
-  gap: 12px;
-  padding-left: 20px;
-  border-left: 1px solid #edf0f4;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.desktop-participant-summary strong {
+  font-size: 12px;
+  color: #4f5967;
+  white-space: nowrap;
 }
 
 .participant-avatars {
@@ -899,6 +1726,34 @@ const getTabIconPath = (icon: string) => {
   background: #eef1f5;
 }
 
+.trip-info-actions {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.desktop-invite-button {
+  display: inline-flex;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid #cfdaff;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #315fe8;
+  background: #eef3ff;
+  cursor: pointer;
+}
+
+.desktop-invite-button:hover {
+  background: #e4ebff;
+}
+
 .desktop-photo-button {
   display: inline-flex;
   height: 38px;
@@ -934,8 +1789,8 @@ const getTabIconPath = (icon: string) => {
 
 .trip-more-button {
   display: grid;
-  width: 34px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -985,6 +1840,18 @@ const getTabIconPath = (icon: string) => {
 
 .trip-menu-popup button:hover {
   background: #f3f6fa;
+}
+
+.trip-menu-popup .danger-menu-item {
+  color: #d54b5d;
+}
+
+.trip-menu-popup .danger-menu-item:hover {
+  background: #fff1f3;
+}
+
+.mobile-participant-card {
+  display: none;
 }
 
 .photo-file-input {
@@ -1386,6 +2253,187 @@ const getTabIconPath = (icon: string) => {
   cursor: pointer;
 }
 
+.participant-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(22, 29, 42, 0.48);
+}
+
+.participant-modal {
+  width: min(460px, 100%);
+  max-height: min(680px, calc(100vh - 40px));
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(26, 36, 53, 0.24);
+}
+
+.participant-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.participant-modal-header p {
+  margin: 0 0 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #4c6fea;
+}
+
+.participant-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #222a36;
+}
+
+.participant-modal-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  font-size: 23px;
+  line-height: 1;
+  color: #747e8c;
+  background: #f3f5f8;
+  cursor: pointer;
+}
+
+.participant-modal-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f5f7fb;
+}
+
+.participant-modal-summary strong {
+  font-size: 13px;
+  color: #343c48;
+}
+
+.participant-modal-summary span {
+  font-size: 10px;
+  color: #8b94a0;
+}
+
+.participant-modal-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.participant-modal-list article {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 2px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.participant-modal-list article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.participant-modal-list article strong {
+  font-size: 12px;
+  color: #303743;
+}
+
+.participant-modal-list article div span {
+  font-size: 9px;
+  color: #939ba6;
+}
+
+.participant-list-guide {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 9px;
+  line-height: 1.6;
+  color: #7e8793;
+  background: #f7f8fa;
+}
+
+.participant-invite-form {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #e8ecf1;
+}
+
+.participant-invite-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #495362;
+}
+
+.participant-invite-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.participant-invite-row input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dce2ea;
+  border-radius: 9px;
+  outline: none;
+  font-size: 12px;
+}
+
+.participant-invite-row input:focus {
+  border-color: #5878e9;
+  box-shadow: 0 0 0 3px rgba(88, 120, 233, 0.11);
+}
+
+.participant-invite-row button {
+  height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #3565ef;
+  cursor: pointer;
+}
+
+.participant-invite-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.participant-action-message,
+.participant-action-error {
+  margin: 9px 0 0;
+  font-size: 10px;
+}
+
+.participant-action-message {
+  color: #28745c;
+}
+
+.participant-action-error {
+  color: #c74658;
+}
+
 .mobile-floating-button {
   display: none;
 }
@@ -1398,6 +2446,22 @@ const getTabIconPath = (icon: string) => {
     min-height: calc(100vh - 52px);
     padding: 0 0 24px;
     background: #f6f7fb;
+  }
+
+
+  .detail-state-card {
+    min-height: 240px;
+    margin: 18px 10px 0;
+    padding: 22px 16px;
+    border-radius: 10px;
+  }
+
+  .detail-state-card p {
+    font-size: 11px;
+  }
+
+  .detail-error-card h1 {
+    font-size: 15px;
   }
 
   .detail-layout {
@@ -1456,9 +2520,76 @@ const getTabIconPath = (icon: string) => {
     content: '';
   }
 
-  /* PC 전용 기능 숨김 */
-  .trip-toolbar {
+  /* 모바일 전용 구성 */
+  .desktop-participant-item,
+  .desktop-participant-divider,
+  .trip-info-actions {
     display: none;
+  }
+
+  .mobile-participant-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e6eaf2;
+    border-radius: 10px;
+    background: #ffffff;
+  }
+
+  .mobile-participant-summary {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    text-align: left;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .mobile-participant-label {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 8px;
+    color: #8c95a1;
+  }
+
+  .mobile-participant-label strong {
+    font-size: 10px;
+    color: #343c48;
+  }
+
+  .mobile-participant-avatars {
+    display: flex;
+    align-items: center;
+    padding-left: 7px;
+  }
+
+  .mobile-participant-avatars .participant-avatar {
+    width: 27px;
+    height: 27px;
+    font-size: 9px;
+  }
+
+  .mobile-invite-button {
+    height: 32px;
+    flex: 0 0 auto;
+    padding: 0 11px;
+    border: 1px solid #cfdaff;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #315fe8;
+    background: #eef3ff;
+    cursor: pointer;
   }
 
   /* 개요 */
@@ -1468,22 +2599,58 @@ const getTabIconPath = (icon: string) => {
   }
 
   .trip-info-card {
-    align-items: flex-start;
-    gap: 12px;
     margin-bottom: 10px;
     padding: 12px;
     border-radius: 10px;
   }
 
-  .trip-info-content {
-    width: 100%;
-    align-items: flex-start;
+  .trip-info-top {
+    grid-template-columns:
+      76px minmax(0, 1fr) auto;
     gap: 12px;
+  }
+
+  .trip-cover-preview {
+    width: 76px;
+    height: 76px;
+    border-radius: 9px;
+  }
+
+  .trip-cover-preview svg {
+    width: 34px;
+  }
+
+  .trip-info-main {
+    padding-top: 0;
   }
 
   .trip-info-label {
     margin-bottom: 5px;
     font-size: 8px;
+  }
+
+  .trip-top-actions {
+    gap: 4px;
+  }
+
+  .trip-edit-button {
+    width: 29px;
+    height: 29px;
+    padding: 0;
+  }
+
+  .trip-top-actions .trip-more-button {
+    width: 29px;
+    height: 29px;
+  }
+
+  .trip-edit-button span {
+    display: none;
+  }
+
+  .trip-edit-button svg {
+    width: 13px;
+    height: 13px;
   }
 
   .trip-info-main h2 {
@@ -1495,12 +2662,24 @@ const getTabIconPath = (icon: string) => {
     font-size: 9px;
   }
 
+  .trip-info-main .trip-description {
+    max-width: none;
+    white-space: normal;
+  }
+
+  .trip-info-bottom {
+    display: block;
+    margin-top: 11px;
+    padding-top: 10px;
+  }
+
   .trip-info-meta {
-    gap: 10px;
+    width: 100%;
+    gap: 12px;
   }
 
   .trip-info-item {
-    min-width: 46px;
+    min-width: 54px;
     gap: 4px;
   }
 
@@ -1513,7 +2692,7 @@ const getTabIconPath = (icon: string) => {
   }
 
   .trip-info-divider {
-    height: 28px;
+    height: 26px;
   }
 
   .map-card,
@@ -1723,6 +2902,30 @@ const getTabIconPath = (icon: string) => {
     font-size: 11px;
   }
 
+  .participant-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .participant-modal {
+    width: 100%;
+    max-height: 82vh;
+    padding: 18px 17px 22px;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .participant-modal-header h2 {
+    font-size: 17px;
+  }
+
+  .participant-invite-row {
+    grid-template-columns: 1fr;
+  }
+
+  .participant-invite-row button {
+    width: 100%;
+  }
+
   /* 모바일 사진 추가 버튼 */
   .mobile-floating-button {
     position: fixed;
@@ -1742,6 +2945,16 @@ const getTabIconPath = (icon: string) => {
     background: #3160ee;
     box-shadow: 0 8px 20px rgba(49, 96, 238, 0.3);
     cursor: pointer;
+  }
+}
+
+@media (min-width: 761px) {
+  .trip-cover-preview {
+    align-self: center;
+  }
+
+  .trip-info-bottom {
+    margin-top: 18px;
   }
 }
 </style>

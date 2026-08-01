@@ -1,94 +1,200 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  computed,
+  onMounted,
+  ref,
+} from 'vue'
+import {
+  useRoute,
+  useRouter,
+} from 'vue-router'
 
-type TripFilter = 'all' | 'owned' | 'participating'
-type TripRole = 'owner' | 'participant'
+import {
+  getTrips,
+  type TripListItem,
+  type TripRole,
+} from '../api/trips'
 
-interface Trip {
-  id: number
-  title: string
-  period: string
-  participants: number
-  role: TripRole
-  thumbnailClass: string
-}
+type TripFilter =
+  | 'all'
+  | 'owned'
+  | 'participating'
 
 const route = useRoute()
 const router = useRouter()
 
-const getFilterFromQuery = (): TripFilter => {
+const trips = ref<TripListItem[]>([])
+const isLoading = ref(true)
+const errorMessage = ref('')
+
+const backendBaseUrl = (() => {
+  const configuredUrl =
+    import.meta.env.VITE_API_BASE_URL as
+      | string
+      | undefined
+
+  if (
+    !configuredUrl
+    || configuredUrl.startsWith('/')
+  ) {
+    return 'http://localhost:8080'
+  }
+
+  return configuredUrl
+    .replace(/\/api\/?$/, '')
+    .replace(/\/$/, '')
+})()
+
+const thumbnailClasses = [
+  'thumbnail-tokyo',
+  'thumbnail-jeju',
+  'thumbnail-busan',
+]
+
+const activeFilter = computed<TripFilter>(() => {
   const filter = route.query.filter
 
-  if (filter === 'owned' || filter === 'participating') {
+  if (
+    filter === 'owned'
+    || filter === 'participating'
+  ) {
     return filter
   }
 
   return 'all'
-}
-
-const activeFilter = ref<TripFilter>(getFilterFromQuery())
-
-const trips: Trip[] = [
-  {
-    id: 1,
-    title: '도쿄 여행',
-    period: '2024.04.10 - 04.14',
-    participants: 3,
-    role: 'owner',
-    thumbnailClass: 'thumbnail-tokyo',
-  },
-  {
-    id: 2,
-    title: '제주도 가족여행',
-    period: '2024.03.20 - 03.23',
-    participants: 4,
-    role: 'participant',
-    thumbnailClass: 'thumbnail-jeju',
-  },
-  {
-    id: 3,
-    title: '부산 1박2일',
-    period: '2024.02.18 - 02.19',
-    participants: 2,
-    role: 'owner',
-    thumbnailClass: 'thumbnail-busan',
-  },
-]
+})
 
 const filteredTrips = computed(() => {
   if (activeFilter.value === 'owned') {
-    return trips.filter((trip) => trip.role === 'owner')
+    return trips.value.filter(
+      (trip) => trip.role === 'OWNER',
+    )
   }
 
-  if (activeFilter.value === 'participating') {
-    return trips.filter((trip) => trip.role === 'participant')
+  if (
+    activeFilter.value
+    === 'participating'
+  ) {
+    return trips.value.filter(
+      (trip) => trip.role === 'MEMBER',
+    )
   }
 
-  return trips
+  return trips.value
 })
 
-const changeFilter = (filter: TripFilter) => {
-  activeFilter.value = filter
+const loadTrips = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
 
+  try {
+    trips.value = await getTrips()
+  } catch (error) {
+    console.error(
+      '여행 목록 조회 실패:',
+      error,
+    )
+
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : '여행 목록을 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const changeFilter = (
+  filter: TripFilter,
+) => {
   void router.replace({
     query: {
       ...route.query,
-      filter: filter === 'all' ? undefined : filter,
+      filter:
+        filter === 'all'
+          ? undefined
+          : filter,
     },
   })
 }
 
-const getRoleLabel = (role: TripRole) => {
-  return role === 'owner' ? '내가 만든 여행' : '참여 중'
+const getRoleLabel = (
+  role: TripRole,
+) => {
+  return role === 'OWNER'
+    ? '내가 만든 여행'
+    : '참여 중'
 }
 
-watch(
-  () => route.query.filter,
-  () => {
-    activeFilter.value = getFilterFromQuery()
-  },
-)
+const formatDate = (
+  date: string,
+) => {
+  return date.replaceAll('-', '.')
+}
+
+const formatPeriod = (
+  trip: TripListItem,
+) => {
+  const startDate = formatDate(
+    trip.startDate,
+  )
+
+  if (!trip.endDate) {
+    return `${startDate} - 종료일 미정`
+  }
+
+  const endDate = formatDate(
+    trip.endDate,
+  )
+
+  return `${startDate} - ${endDate}`
+}
+
+const getThumbnailClass = (
+  tripId: number,
+) => {
+  const index =
+    Math.abs(tripId - 1)
+    % thumbnailClasses.length
+
+  return thumbnailClasses[index]
+}
+
+const getCoverImageUrl = (
+  coverImagePath: string,
+) => {
+  if (
+    coverImagePath.startsWith('http://')
+    || coverImagePath.startsWith('https://')
+  ) {
+    return coverImagePath
+  }
+
+  const cleanedPath =
+    coverImagePath.replaceAll('\\', '/')
+
+  const normalizedPath =
+    cleanedPath.startsWith('/')
+      ? cleanedPath
+      : `/${cleanedPath}`
+
+  return `${backendBaseUrl}${normalizedPath}`
+}
+
+const goToTripDetail = (
+  tripId: number,
+) => {
+  void router.push({
+    name: 'trip-detail',
+    params: {
+      id: tripId,
+    },
+  })
+}
+
+onMounted(() => {
+  void loadTrips()
+})
 </script>
 
 <template>
@@ -100,15 +206,25 @@ watch(
         <h1>여행 기록</h1>
       </div>
 
-      <RouterLink class="desktop-create-button" to="/trips/create"> + 여행 만들기 </RouterLink>
+      <RouterLink
+        class="desktop-create-button"
+        to="/trips/create"
+      >
+        + 여행 만들기
+      </RouterLink>
     </div>
 
     <!-- 여행 필터 -->
     <div class="trip-filters">
       <button
         type="button"
-        :class="{ active: activeFilter === 'all' }"
-        :aria-pressed="activeFilter === 'all'"
+        :class="{
+          active:
+            activeFilter === 'all',
+        }"
+        :aria-pressed="
+          activeFilter === 'all'
+        "
         @click="changeFilter('all')"
       >
         전체
@@ -116,8 +232,13 @@ watch(
 
       <button
         type="button"
-        :class="{ active: activeFilter === 'owned' }"
-        :aria-pressed="activeFilter === 'owned'"
+        :class="{
+          active:
+            activeFilter === 'owned',
+        }"
+        :aria-pressed="
+          activeFilter === 'owned'
+        "
         @click="changeFilter('owned')"
       >
         내가 만든 여행
@@ -125,21 +246,108 @@ watch(
 
       <button
         type="button"
-        :class="{ active: activeFilter === 'participating' }"
-        :aria-pressed="activeFilter === 'participating'"
-        @click="changeFilter('participating')"
+        :class="{
+          active:
+            activeFilter
+            === 'participating',
+        }"
+        :aria-pressed="
+          activeFilter
+          === 'participating'
+        "
+        @click="
+          changeFilter('participating')
+        "
       >
         참여 중
       </button>
     </div>
 
+    <!-- 로딩 중 -->
+    <div
+      v-if="isLoading"
+      class="loading-state"
+      aria-live="polite"
+    >
+      여행 목록을 불러오는 중입니다.
+    </div>
+
+    <!-- 조회 오류 -->
+    <div
+      v-else-if="errorMessage"
+      class="error-state"
+      role="alert"
+    >
+      <p>{{ errorMessage }}</p>
+
+      <button
+        type="button"
+        @click="loadTrips"
+      >
+        다시 불러오기
+      </button>
+    </div>
+
     <!-- 여행 목록 -->
-    <div v-if="filteredTrips.length > 0" class="trip-list">
-      <article v-for="trip in filteredTrips" :key="trip.id" class="trip-list-item">
-        <div class="trip-thumbnail" :class="trip.thumbnailClass">
-          <span class="mountain mountain-back"></span>
-          <span class="mountain mountain-front"></span>
-          <span class="thumbnail-sun"></span>
+    <div
+      v-else-if="
+        filteredTrips.length > 0
+      "
+      class="trip-list"
+    >
+      <article
+        v-for="trip in filteredTrips"
+        :key="trip.id"
+        class="trip-list-item"
+        tabindex="0"
+        role="link"
+        @click="
+          goToTripDetail(trip.id)
+        "
+        @keydown.enter="
+          goToTripDetail(trip.id)
+        "
+        @keydown.space.prevent="
+          goToTripDetail(trip.id)
+        "
+      >
+        <div
+          class="trip-thumbnail"
+          :class="
+            getThumbnailClass(trip.id)
+          "
+        >
+          <img
+            v-if="trip.coverImagePath"
+            :src="
+              getCoverImageUrl(
+                trip.coverImagePath,
+              )
+            "
+            :alt="
+              `${trip.title} 대표 이미지`
+            "
+          />
+
+          <template v-else>
+            <span
+              class="
+                mountain
+                mountain-back
+              "
+            ></span>
+
+            <span
+              class="
+                mountain
+                mountain-front
+              "
+            ></span>
+
+            <span
+              class="thumbnail-sun"
+            ></span>
+          </template>
         </div>
 
         <div class="trip-information">
@@ -149,34 +357,51 @@ watch(
             <span
               class="trip-role-badge"
               :class="{
-                owner: trip.role === 'owner',
-                participant: trip.role === 'participant',
+                owner:
+                  trip.role === 'OWNER',
+                participant:
+                  trip.role === 'MEMBER',
               }"
             >
-              {{ getRoleLabel(trip.role) }}
+              {{
+                getRoleLabel(trip.role)
+              }}
             </span>
           </div>
 
-          <p class="trip-period">
-            {{ trip.period }}
+          <p class="trip-destination">
+            {{ trip.destination }}
           </p>
 
-          <p class="trip-participants">참여자 {{ trip.participants }}명</p>
-        </div>
+          <p class="trip-period">
+            {{ formatPeriod(trip) }}
+          </p>
 
-        <button class="trip-more-button" type="button" aria-label="여행 메뉴 열기">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+          <p class="trip-participants">
+            참여자
+            {{ trip.participantCount }}명
+          </p>
+        </div>
       </article>
     </div>
 
     <!-- 여행이 없을 때 -->
-    <div v-else class="empty-trips">
-      <p>해당하는 여행이 없습니다.</p>
+    <div
+      v-else
+      class="empty-trips"
+    >
+      <p>
+        해당하는 여행이 없습니다.
+      </p>
 
-      <RouterLink v-if="activeFilter === 'owned'" class="empty-create-button" to="/trips/create">
+      <RouterLink
+        v-if="
+          activeFilter
+          !== 'participating'
+        "
+        class="empty-create-button"
+        to="/trips/create"
+      >
         여행 만들기
       </RouterLink>
     </div>
@@ -211,22 +436,25 @@ watch(
 
 .desktop-create-button {
   display: flex;
+  height: 44px;
   align-items: center;
   justify-content: center;
-  height: 44px;
   padding: 0 22px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
   color: #ffffff;
+  text-decoration: none;
   background: #405bf4;
 }
 
 /* 여행 필터 */
 .trip-filters {
   display: grid;
-  grid-template-columns: repeat(3, 150px);
-  border-bottom: 1px solid #e5e9ef;
+  grid-template-columns:
+    repeat(3, 150px);
+  border-bottom:
+    1px solid #e5e9ef;
 }
 
 .trip-filters button {
@@ -245,31 +473,47 @@ watch(
   color: #3264ed;
 }
 
-.trip-filters button.active::after {
+.trip-filters
+  button.active::after {
   position: absolute;
   right: 0;
   bottom: -1px;
   left: 0;
   height: 3px;
-  border-radius: 3px 3px 0 0;
+  border-radius:
+    3px 3px 0 0;
   background: #3264ed;
   content: '';
 }
 
 /* 여행 목록 */
 .trip-list {
-  border-bottom: 1px solid #e8ebf0;
+  border-bottom:
+    1px solid #e8ebf0;
 }
 
 .trip-list-item {
   position: relative;
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr) 36px;
+  grid-template-columns:
+    132px minmax(0, 1fr);
   align-items: center;
   gap: 22px;
   min-height: 150px;
   padding: 20px 8px;
-  border-bottom: 1px solid #e8ebf0;
+  border-bottom:
+    1px solid #e8ebf0;
+  cursor: pointer;
+}
+
+.trip-list-item:hover {
+  background: #fafbfe;
+}
+
+.trip-list-item:focus-visible {
+  outline:
+    2px solid #3264ed;
+  outline-offset: -2px;
 }
 
 .trip-list-item:last-child {
@@ -285,16 +529,37 @@ watch(
   background: #aac3da;
 }
 
+.trip-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .thumbnail-tokyo {
-  background: linear-gradient(145deg, #9db6d0 0%, #d7c0b2 100%);
+  background:
+    linear-gradient(
+      145deg,
+      #9db6d0 0%,
+      #d7c0b2 100%
+    );
 }
 
 .thumbnail-jeju {
-  background: linear-gradient(145deg, #82b8a5 0%, #c8d892 100%);
+  background:
+    linear-gradient(
+      145deg,
+      #82b8a5 0%,
+      #c8d892 100%
+    );
 }
 
 .thumbnail-busan {
-  background: linear-gradient(145deg, #7090b7 0%, #d4b48d 100%);
+  background:
+    linear-gradient(
+      145deg,
+      #7090b7 0%,
+      #d4b48d 100%
+    );
 }
 
 .mountain {
@@ -308,7 +573,8 @@ watch(
 
 .mountain-back {
   right: -20px;
-  background: rgba(255, 255, 255, 0.28);
+  background:
+    rgba(255, 255, 255, 0.28);
 }
 
 .mountain-front {
@@ -316,7 +582,8 @@ watch(
   left: -5px;
   width: 115px;
   height: 92px;
-  background: rgba(255, 255, 255, 0.5);
+  background:
+    rgba(255, 255, 255, 0.5);
 }
 
 .thumbnail-sun {
@@ -326,7 +593,8 @@ watch(
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
+  background:
+    rgba(255, 255, 255, 0.8);
 }
 
 .trip-information {
@@ -335,8 +603,8 @@ watch(
 
 .trip-title-row {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: center;
   gap: 9px;
 }
 
@@ -348,9 +616,9 @@ watch(
 
 .trip-role-badge {
   display: inline-flex;
+  min-height: 24px;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
   padding: 0 9px;
   border-radius: 20px;
   font-size: 11px;
@@ -367,8 +635,14 @@ watch(
   background: #e8f7f1;
 }
 
-.trip-period {
+.trip-destination {
   margin: 9px 0 0;
+  font-size: 13px;
+  color: #555f6d;
+}
+
+.trip-period {
+  margin: 6px 0 0;
   font-size: 13px;
   color: #707986;
 }
@@ -379,22 +653,35 @@ watch(
   color: #9ba2ac;
 }
 
-.trip-more-button {
+/* 로딩 및 오류 */
+.loading-state,
+.error-state {
   display: flex;
+  min-height: 260px;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 10px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
+  justify-content: center;
+  gap: 14px;
+  border-bottom:
+    1px solid #e8ebf0;
+  font-size: 14px;
+  color: #8d95a0;
 }
 
-.trip-more-button span {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #9ba2ac;
+.error-state p {
+  margin: 0;
+}
+
+.error-state button {
+  height: 38px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #405bf4;
+  cursor: pointer;
 }
 
 /* 빈 목록 */
@@ -405,7 +692,8 @@ watch(
   align-items: center;
   justify-content: center;
   gap: 16px;
-  border-bottom: 1px solid #e8ebf0;
+  border-bottom:
+    1px solid #e8ebf0;
 }
 
 .empty-trips p {
@@ -416,17 +704,19 @@ watch(
 
 .empty-create-button {
   display: flex;
+  height: 38px;
   align-items: center;
   justify-content: center;
-  height: 38px;
   padding: 0 17px;
   border-radius: 7px;
   font-size: 12px;
   font-weight: 700;
   color: #ffffff;
+  text-decoration: none;
   background: #405bf4;
 }
 
+/* 모바일 */
 @media (max-width: 760px) {
   .trips-page {
     padding: 0 17px 92px;
@@ -437,7 +727,8 @@ watch(
   }
 
   .trip-filters {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns:
+      repeat(3, 1fr);
     margin: 0 -17px;
     padding: 0 17px;
   }
@@ -452,7 +743,8 @@ watch(
   }
 
   .trip-list-item {
-    grid-template-columns: 92px minmax(0, 1fr) 24px;
+    grid-template-columns:
+      92px minmax(0, 1fr);
     gap: 13px;
     min-height: 112px;
     padding: 14px 0;
@@ -496,8 +788,13 @@ watch(
     font-size: 8px;
   }
 
-  .trip-period {
+  .trip-destination {
     margin-top: 6px;
+    font-size: 10px;
+  }
+
+  .trip-period {
+    margin-top: 4px;
     font-size: 10px;
   }
 
@@ -506,12 +803,15 @@ watch(
     font-size: 9px;
   }
 
-  .trip-more-button {
-    padding: 6px;
-  }
-
+  .loading-state,
+  .error-state,
   .empty-trips {
     min-height: 220px;
+  }
+
+  .loading-state,
+  .error-state {
+    font-size: 12px;
   }
 
   .empty-trips p {

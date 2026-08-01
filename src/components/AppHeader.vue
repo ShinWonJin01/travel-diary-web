@@ -406,20 +406,6 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
-    <!-- 여행 상세: 더보기 -->
-    <button
-      v-else-if="isTripDetailPage"
-      class="mobile-header-button mobile-more-button"
-      type="button"
-      aria-label="여행 상세 메뉴 열기"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="5" r="1.2" />
-        <circle cx="12" cy="12" r="1.2" />
-        <circle cx="12" cy="19" r="1.2" />
-      </svg>
-    </button>
-
     <span v-else class="mobile-header-side"></span>
   </header>
 
