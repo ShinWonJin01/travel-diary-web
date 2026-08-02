@@ -5,6 +5,7 @@ export interface Member {
   name: string
   email: string
   nickname: string
+  profileImagePath: string | null
   createdAt: string
 }
 
@@ -23,6 +24,11 @@ export interface LoginRequest {
 export interface ChangePasswordRequest {
   currentPassword: string
   newPassword: string
+}
+
+export interface UpdateProfileRequest {
+  name: string
+  nickname: string
 }
 
 export interface DeleteAccountRequest {
@@ -83,6 +89,58 @@ export async function login(
   return response
 }
 
+export async function updateProfile(
+  request: UpdateProfileRequest,
+): Promise<Member> {
+  const member = await apiRequest<Member>(
+    '/api/members/me',
+    {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    },
+  )
+
+  saveStoredMember(member)
+
+  return member
+}
+
+export async function uploadProfileImage(
+  file: File,
+): Promise<Member> {
+  const formData = new FormData()
+
+  formData.append(
+    'file',
+    file,
+  )
+
+  const member = await apiRequest<Member>(
+    '/api/members/me/profile-image',
+    {
+      method: 'POST',
+      body: formData,
+    },
+  )
+
+  saveStoredMember(member)
+
+  return member
+}
+
+export async function resetProfileImage(): Promise<Member> {
+  const member = await apiRequest<Member>(
+    '/api/members/me/profile-image',
+    {
+      method: 'DELETE',
+    },
+  )
+
+  saveStoredMember(member)
+
+  return member
+}
+
 export async function changePassword(
   request: ChangePasswordRequest,
 ): Promise<void> {
@@ -138,3 +196,30 @@ export function getStoredMember(): Member | null {
   }
 }
 
+function saveStoredMember(
+  member: Member,
+): void {
+  if (
+    sessionStorage.getItem(
+      'accessToken',
+    )
+  ) {
+    sessionStorage.setItem(
+      'member',
+      JSON.stringify(member),
+    )
+
+    return
+  }
+
+  if (
+    localStorage.getItem(
+      'accessToken',
+    )
+  ) {
+    localStorage.setItem(
+      'member',
+      JSON.stringify(member),
+    )
+  }
+}
