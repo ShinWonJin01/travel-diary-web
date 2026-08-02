@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import ProfileCard from '@/components/ProfileCard.vue'
+import TripSummary from '@/components/TripSummary.vue'
 import ProfileEditModal from '@/components/ProfileEditModal.vue'
 import PasswordChangeModal from '@/components/PasswordChangeModal.vue'
 import AccountManagementModal from '@/components/AccountManagementModal.vue'
@@ -202,30 +203,7 @@ const closeAccountModal = () => {
       />
 
       <!-- 여행 정보 -->
-      <section class="trip-summary">
-        <div class="summary-item">
-          <strong>5</strong>
-          <span>전체 여행</span>
-        </div>
-
-        <div
-          class="summary-divider"
-        ></div>
-
-        <div class="summary-item">
-          <strong>3</strong>
-          <span>내가 만든 여행</span>
-        </div>
-
-        <div
-          class="summary-divider"
-        ></div>
-
-        <div class="summary-item">
-          <strong>2</strong>
-          <span>참여 중</span>
-        </div>
-      </section>
+      <TripSummary />
 
       <!-- 설정 메뉴 -->
       <section class="settings-section">
@@ -402,45 +380,6 @@ const closeAccountModal = () => {
 }
 
 /* =========================
-   여행 정보
-========================= */
-
-.trip-summary {
-  display: grid;
-  grid-template-columns:
-    1fr 1px 1fr 1px 1fr;
-  align-items: center;
-  margin-top: 18px;
-  padding: 20px;
-  border: 1px solid #e3e8ef;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-}
-
-.summary-item strong {
-  font-size: 20px;
-  color: #315ce8;
-}
-
-.summary-item span {
-  font-size: 12px;
-  color: #7e8794;
-}
-
-.summary-divider {
-  width: 1px;
-  height: 34px;
-  background: #e5e9ef;
-}
-
-/* =========================
    설정
 ========================= */
 
@@ -547,27 +486,6 @@ const closeAccountModal = () => {
 
   .mypage-content {
     max-width: none;
-  }
-
-  .trip-summary {
-    margin-top: 13px;
-    padding: 16px 7px;
-  }
-
-  .summary-item {
-    gap: 5px;
-  }
-
-  .summary-item strong {
-    font-size: 16px;
-  }
-
-  .summary-item span {
-    font-size: 9px;
-  }
-
-  .summary-divider {
-    height: 28px;
   }
 
   .settings-section {
