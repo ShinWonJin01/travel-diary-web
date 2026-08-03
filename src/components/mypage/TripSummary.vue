@@ -1,21 +1,29 @@
+<script setup lang="ts">
+defineProps<{
+  totalCount: number
+  ownedCount: number
+  participatingCount: number
+}>()
+</script>
+
 <template>
   <section class="trip-summary">
     <div class="summary-item">
-      <strong>5</strong>
+      <strong>{{ totalCount }}</strong>
       <span>전체 여행</span>
     </div>
 
     <div class="summary-divider"></div>
 
     <div class="summary-item">
-      <strong>3</strong>
+      <strong>{{ ownedCount }}</strong>
       <span>내가 만든 여행</span>
     </div>
 
     <div class="summary-divider"></div>
 
     <div class="summary-item">
-      <strong>2</strong>
+      <strong>{{ participatingCount }}</strong>
       <span>참여 중</span>
     </div>
   </section>

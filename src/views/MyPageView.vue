@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import ProfileCard from '@/components/mypage/ProfileCard.vue'
 import TripSummary from '@/components/mypage/TripSummary.vue'
@@ -12,6 +12,11 @@ import {
   getStoredMember,
   type Member,
 } from '@/api/auth'
+
+import {
+  getTripSummary,
+  type TripSummary as TripSummaryData,
+} from '@/api/trips'
 
 /* =========================
    현재 로그인 회원
@@ -28,6 +33,24 @@ const profileInitial = computed(() => {
 
   return name.charAt(0)
 })
+
+/* =========================
+   여행 통계
+========================= */
+
+const tripSummary = ref<TripSummaryData>({
+  totalCount: 0,
+  ownedCount: 0,
+  participatingCount: 0,
+})
+
+const loadTripSummary = async () => {
+  try {
+    tripSummary.value = await getTripSummary()
+  } catch (error) {
+    console.error('여행 통계를 불러오지 못했습니다.', error)
+  }
+}
 
 /* =========================
    프로필 수정 모달
@@ -147,6 +170,13 @@ const closeAccountModal = () => {
   isAccountModalOpen.value = false
 }
 
+/* =========================
+   초기 데이터 조회
+========================= */
+
+onMounted(() => {
+  loadTripSummary()
+})
 </script>
 
 <template>
@@ -166,7 +196,11 @@ const closeAccountModal = () => {
       />
 
       <!-- 여행 정보 -->
-      <TripSummary />
+      <TripSummary
+        :total-count="tripSummary.totalCount"
+        :owned-count="tripSummary.ownedCount"
+        :participating-count="tripSummary.participatingCount"
+      />
 
       <!-- 설정 -->
       <SettingsMenu @select="handleMenuClick" />

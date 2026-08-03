@@ -28,6 +28,12 @@ export interface TripListItem extends Trip {
   participantCount: number
 }
 
+export interface TripSummary {
+  totalCount: number
+  ownedCount: number
+  participatingCount: number
+}
+
 export async function createTrip(
   request: TripCreateRequest,
 ): Promise<Trip> {
@@ -39,6 +45,12 @@ export async function createTrip(
 
 export async function getTrips(): Promise<TripListItem[]> {
   return apiRequest<TripListItem[]>('/api/trips', {
+    method: 'GET',
+  })
+}
+
+export async function getTripSummary(): Promise<TripSummary> {
+  return apiRequest<TripSummary>('/api/trips/summary', {
     method: 'GET',
   })
 }
