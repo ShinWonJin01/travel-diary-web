@@ -6,6 +6,7 @@ import {
   logout as clearStoredLogin,
   type Member,
 } from '@/api/auth'
+import { getTripDetail } from '@/api/trips'
 
 type NotificationType = 'invitation' | 'trip-change' | 'activity' | 'ai'
 
@@ -33,6 +34,8 @@ const memberNickname = computed(() => {
 const isHomePage = computed(() => route.name === 'home')
 const isTripsPage = computed(() => route.name === 'trips')
 const isTripDetailPage = computed(() => route.name === 'trip-detail')
+
+const tripDetailTitle = ref('여행 상세')
 
 const isNotificationOpen = ref(false)
 
@@ -94,12 +97,37 @@ const mobileTitle = computed(() => {
       return '여행 만들기'
 
     case 'trip-detail':
-      return '도쿄 여행'
+      return tripDetailTitle.value
 
     default:
       return '공동 여행기록장'
   }
 })
+
+const loadTripDetailTitle = async () => {
+  if (route.name !== 'trip-detail') {
+    tripDetailTitle.value = '여행 상세'
+    return
+  }
+
+  const routeId = Array.isArray(route.params.id)
+    ? route.params.id[0]
+    : route.params.id
+
+  const tripId = Number(routeId)
+
+  if (!Number.isInteger(tripId) || tripId <= 0) {
+    tripDetailTitle.value = '여행 상세'
+    return
+  }
+
+  try {
+    const trip = await getTripDetail(tripId)
+    tripDetailTitle.value = trip.title
+  } catch {
+    tripDetailTitle.value = '여행 상세'
+  }
+}
 
 const getNotificationTypeLabel = (type: NotificationType) => {
   switch (type) {
@@ -178,6 +206,16 @@ watch(
   () => route.fullPath,
   () => {
     isNotificationOpen.value = false
+  },
+)
+
+watch(
+  () => [route.name, route.params.id],
+  () => {
+    void loadTripDetailTitle()
+  },
+  {
+    immediate: true,
   },
 )
 
