@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+
+import { getReceivedInvitations } from '@/api/invitations'
+import { getTrips } from '@/api/trips'
 
 import RecentTripsSection from '@/components/home/RecentTripsSection.vue'
 import ReceivedInvitationsSection from '@/components/home/ReceivedInvitationsSection.vue'
@@ -10,6 +14,7 @@ interface RecentTrip {
   title: string
   period: string
   theme: string
+  coverImageUrl: string
 }
 
 interface ReceivedInvitation {
@@ -30,53 +35,96 @@ interface Activity {
   time: string
 }
 
-const recentTrips: RecentTrip[] = [
-  {
-    id: 1,
-    title: '도쿄 여행',
-    period: '2024.06.23 - 06.26',
-    theme: 'trip-theme-blue',
-  },
-  {
-    id: 2,
-    title: '제주도 여행',
-    period: '2024.07.10 - 07.13',
-    theme: 'trip-theme-green',
-  },
-  {
-    id: 3,
-    title: '부산 여행',
-    period: '2024.08.02 - 08.04',
-    theme: 'trip-theme-purple',
-  },
-  {
-    id: 4,
-    title: '강릉 여행',
-    period: '2024.09.14 - 09.16',
-    theme: 'trip-theme-sky',
-  },
+const recentTripThemes = [
+  'trip-theme-blue',
+  'trip-theme-green',
+  'trip-theme-purple',
+  'trip-theme-sky',
 ]
 
-const receivedInvitations: ReceivedInvitation[] = [
-  {
-    id: 1,
-    tripId: 5,
-    title: '오사카 친구 여행',
-    inviter: '홍길동',
-    participants: 4,
-    period: '2026.08.10 - 08.13',
-    theme: 'invitation-theme-blue',
-  },
-  {
-    id: 2,
-    tripId: 6,
-    title: '여수 여름 여행',
-    inviter: '김민수',
-    participants: 3,
-    period: '2026.08.22 - 08.24',
-    theme: 'invitation-theme-green',
-  },
+const backendBaseUrl = (() => {
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined
+
+  if (!configuredUrl || configuredUrl.startsWith('/')) return 'http://localhost:8080'
+
+  return configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')
+})()
+
+const getCoverImageUrl = (path: string | null) => {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+
+  const cleanedPath = path.replaceAll('\\', '/')
+  const normalizedPath = cleanedPath.startsWith('/') ? cleanedPath : `/${cleanedPath}`
+
+  return `${backendBaseUrl}${normalizedPath}`
+}
+
+const recentTrips = ref<RecentTrip[]>([])
+
+const formatTripPeriod = (
+  startDate: string,
+  endDate: string | null,
+) => {
+  const [startYear, startMonth, startDay] = startDate.split('-')
+
+  if (!startYear || !startMonth || !startDay) return '-'
+
+  const formattedStart = `${startYear}.${startMonth}.${startDay}`
+
+  if (!endDate) return `${formattedStart} - 종료일 미정`
+
+  const [, endMonth, endDay] = endDate.split('-')
+  if (!endMonth || !endDay) return formattedStart
+
+  return `${formattedStart} - ${endMonth}.${endDay}`
+}
+
+const loadRecentTrips = async () => {
+  try {
+    const trips = await getTrips()
+
+    recentTrips.value = trips.slice(0, 4).map((trip, index) => ({
+      id: trip.id,
+      title: trip.title,
+      period: formatTripPeriod(trip.startDate, trip.endDate),
+      theme: recentTripThemes[index % recentTripThemes.length] ?? 'trip-theme-blue',
+      coverImageUrl: getCoverImageUrl(trip.coverImagePath),
+    }))
+  } catch {
+    recentTrips.value = []
+  }
+}
+
+onMounted(() => {
+  void loadRecentTrips()
+  void loadReceivedInvitations()
+})
+
+const invitationThemes = [
+  'invitation-theme-blue',
+  'invitation-theme-green',
 ]
+
+const receivedInvitations = ref<ReceivedInvitation[]>([])
+
+const loadReceivedInvitations = async () => {
+  try {
+    const invitations = await getReceivedInvitations()
+
+    receivedInvitations.value = invitations.slice(0, 2).map((invitation, index) => ({
+      id: invitation.invitationId,
+      tripId: invitation.tripId,
+      title: invitation.tripTitle,
+      inviter: invitation.inviterNickname,
+      participants: invitation.currentParticipantCount,
+      period: formatTripPeriod(invitation.startDate, invitation.endDate),
+      theme: invitationThemes[index % invitationThemes.length] ?? 'invitation-theme-blue',
+    }))
+  } catch {
+    receivedInvitations.value = []
+  }
+}
 
 const activities: Activity[] = [
   {

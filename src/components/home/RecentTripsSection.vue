@@ -6,6 +6,7 @@ interface RecentTrip {
   title: string
   period: string
   theme: string
+  coverImageUrl: string
 }
 
 defineProps<{
@@ -40,9 +41,16 @@ defineProps<{
       >
         <div
           class="recent-trip-image"
-          :class="trip.theme"
+          :class="{ [trip.theme]: !trip.coverImageUrl }"
         >
+          <img
+            v-if="trip.coverImageUrl"
+            :src="trip.coverImageUrl"
+            :alt="`${trip.title} 대표 이미지`"
+          />
+
           <svg
+            v-else
             viewBox="0 0 64 52"
             aria-hidden="true"
           >
@@ -122,6 +130,13 @@ defineProps<{
   align-items: center;
   justify-content: center;
   height: 126px;
+  overflow: hidden;
+}
+
+.recent-trip-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .recent-trip-image svg {
