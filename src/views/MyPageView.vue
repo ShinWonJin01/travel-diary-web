@@ -9,6 +9,7 @@ import PasswordChangeModal from '@/components/mypage/PasswordChangeModal.vue'
 import AccountManagementModal from '@/components/mypage/AccountManagementModal.vue'
 
 import {
+  getCurrentMember,
   getStoredMember,
   type Member,
 } from '@/api/auth'
@@ -85,7 +86,7 @@ const backendBaseUrl = (() => {
     | undefined
 
   if (!configuredUrl || configuredUrl.startsWith('/')) {
-    return 'http://localhost:8080'
+    return `${window.location.protocol}//${window.location.hostname}:8080`
   }
 
   return configuredUrl
@@ -174,7 +175,16 @@ const closeAccountModal = () => {
    초기 데이터 조회
 ========================= */
 
+const loadCurrentMember = async () => {
+  try {
+    currentMember.value = await getCurrentMember()
+  } catch (error) {
+    console.error('회원 정보를 불러오지 못했습니다.', error)
+  }
+}
+
 onMounted(() => {
+  loadCurrentMember()
   loadTripSummary()
 })
 </script>

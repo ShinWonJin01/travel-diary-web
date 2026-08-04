@@ -8,13 +8,17 @@ import {
   deleteTrip,
   getTripDetail,
   getTripParticipants,
+  getTripPhotos,
   getTrips,
   leaveTrip,
   sendTripInvitation,
   updateTrip,
+  uploadTripPhoto,
+  deleteTripPhoto,
   type Trip,
   type TripListItem,
   type TripParticipant,
+  type TripPhoto,
 } from '@/api/trips'
 
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
@@ -47,6 +51,8 @@ interface PhotoItem {
   title: string
   location: string
   className: string
+  imageUrl: string
+  canDelete: boolean
 }
 
 interface Participant {
@@ -79,6 +85,7 @@ const isSavingTrip = ref(false)
 const tripEditErrorMessage = ref('')
 
 const tripParticipants = ref<TripParticipant[]>([])
+const tripPhotos = ref<TripPhoto[]>([])
 
 const isParticipantModalOpen = ref(false)
 const inviteNickname = ref('')
@@ -139,7 +146,9 @@ const tripDuration = computed(() => {
 const backendBaseUrl = (() => {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined
 
-  if (!configuredUrl || configuredUrl.startsWith('/')) return 'http://localhost:8080'
+  if (!configuredUrl || configuredUrl.startsWith('/')) {
+    return `${window.location.protocol}//${window.location.hostname}:8080`
+  }
 
   return configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')
 })()
@@ -229,19 +238,23 @@ const loadTrip = async () => {
   isCoverImageBroken.value = false
 
   try {
-    const [tripDetail, tripItems, participantItems] = await Promise.all([
-      getTripDetail(tripId.value),
-      getTrips().catch(() => []),
-      getTripParticipants(tripId.value),
-    ])
+    const [tripDetail, tripItems, participantItems, photoItems] =
+      await Promise.all([
+        getTripDetail(tripId.value),
+        getTrips().catch(() => []),
+        getTripParticipants(tripId.value),
+        getTripPhotos(tripId.value),
+      ])
 
     trip.value = tripDetail
     tripListItem.value = tripItems.find((item) => item.id === tripId.value) ?? null
     tripParticipants.value = participantItems
+    tripPhotos.value = photoItems
   } catch (error: unknown) {
     trip.value = null
     tripListItem.value = null
     tripParticipants.value = []
+    tripPhotos.value = []
 
     if (error instanceof ApiError) {
       errorMessage.value = error.message
@@ -286,14 +299,32 @@ const timelineGroups: TimelineGroup[] = [
   },
 ]
 
-const photos: PhotoItem[] = [
-  { id: 1, title: '도쿄역', location: '도쿄역', className: 'photo-blue' },
-  { id: 2, title: '신주쿠', location: '신주쿠', className: 'photo-green' },
-  { id: 3, title: '야경', location: '도쿄 타워', className: 'photo-orange' },
-  { id: 4, title: '카페', location: '시부야', className: 'photo-purple' },
-  { id: 5, title: '거리 풍경', location: '긴자', className: 'photo-sky' },
-  { id: 6, title: '저녁 식사', location: '우에노', className: 'photo-gray' },
+const photoClasses = [
+  'photo-blue',
+  'photo-green',
+  'photo-purple',
+  'photo-orange',
 ]
+
+const photos = computed<PhotoItem[]>(() => {
+  const currentMember = getStoredMember()
+
+  return tripPhotos.value.map((photo, index) => {
+    const cleanedPath = photo.filePath.replaceAll('\\', '/')
+    const normalizedPath = cleanedPath.startsWith('/')
+      ? cleanedPath
+      : `/${cleanedPath}`
+
+    return {
+      id: photo.id,
+      title: photo.originalFileName,
+      location: '위치 정보 없음',
+      className: photoClasses[index % photoClasses.length] ?? 'photo-blue',
+      imageUrl: `${backendBaseUrl}${normalizedPath}`,
+      canDelete: isOwner.value || photo.uploadedByMemberId === currentMember?.id,
+    }
+  })
+})
 
 const validTabs: TripTab[] = ['overview', 'timeline', 'photos', 'map', 'ai-diary']
 
@@ -327,16 +358,72 @@ const openPhotoUpload = () => {
   photoInputRef.value?.click()
 }
 
-const handlePhotoSelect = (event: Event) => {
+const handlePhotoSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (!input.files || input.files.length === 0) return
 
-  /*
-   * 추후 여기에서 선택한 파일을 FormData에 담아
-   * 사진 등록 API로 전송합니다.
-   */
+  if (
+    tripId.value === null
+    || !input.files
+    || input.files.length === 0
+  ) {
+    return
+  }
 
-  input.value = ''
+  const files = Array.from(input.files)
+
+  try {
+    for (const file of files) {
+      const uploadedPhoto = await uploadTripPhoto(
+        tripId.value,
+        file,
+      )
+
+      tripPhotos.value.push(uploadedPhoto)
+    }
+
+    selectTab('photos')
+
+    window.alert(
+      files.length === 1
+        ? '사진을 등록했습니다.'
+        : `사진 ${files.length}장을 등록했습니다.`,
+    )
+  } catch (error: unknown) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : '사진을 등록하지 못했습니다.',
+    )
+  } finally {
+    input.value = ''
+  }
+}
+
+const handleDeletePhoto = async (photoId: number) => {
+  if (tripId.value === null) return
+
+  const confirmed = window.confirm(
+    '이 사진을 삭제하시겠습니까?',
+  )
+
+  if (!confirmed) return
+
+  try {
+    await deleteTripPhoto(
+      tripId.value,
+      photoId,
+    )
+
+    tripPhotos.value = tripPhotos.value.filter(
+      (photo) => photo.id !== photoId,
+    )
+  } catch (error: unknown) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : '사진을 삭제하지 못했습니다.',
+    )
+  }
 }
 
 /* 참여자 관리 */
@@ -543,10 +630,12 @@ const handleLeaveTrip = async () => {
         <TripPhotosTab
           v-else-if="activeTab === 'photos'"
           :photos="photos"
+          @add-photo="openPhotoUpload"
+          @delete-photo="handleDeletePhoto"
         />
 
         <TripMapTab v-else-if="activeTab === 'map'" />
-        <TripAiDiaryTab v-else />
+        <TripAiDiaryTab v-else-if="activeTab === 'ai-diary'" />
       </section>
     </div>
 

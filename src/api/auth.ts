@@ -89,6 +89,19 @@ export async function login(
   return response
 }
 
+export async function getCurrentMember(): Promise<Member> {
+  const member = await apiRequest<Member>(
+    '/api/members/me',
+    {
+      method: 'GET',
+    },
+  )
+
+  saveStoredMember(member)
+
+  return member
+}
+
 export async function updateProfile(
   request: UpdateProfileRequest,
 ): Promise<Member> {

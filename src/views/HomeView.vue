@@ -45,8 +45,10 @@ const recentTripThemes = [
 const backendBaseUrl = (() => {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined
 
-  if (!configuredUrl || configuredUrl.startsWith('/')) return 'http://localhost:8080'
-
+  if (!configuredUrl || configuredUrl.startsWith('/')) {
+    return `${window.location.protocol}//${window.location.hostname}:8080`
+  }
+  
   return configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')
 })()
 

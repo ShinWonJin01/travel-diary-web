@@ -43,6 +43,19 @@ export interface TripParticipant {
   role: TripRole
 }
 
+export interface TripPhoto {
+  id: number
+  tripId: number
+  uploadedByMemberId: number | null
+  uploadedByNickname: string | null
+  filePath: string
+  originalFileName: string
+  takenAt: string | null
+  latitude: number | null
+  longitude: number | null
+  createdAt: string
+}
+
 export interface TripSummary {
   totalCount: number
   ownedCount: number
@@ -111,6 +124,14 @@ export async function getTripParticipants(
   })
 }
 
+export async function getTripPhotos(
+  tripId: number,
+): Promise<TripPhoto[]> {
+  return apiRequest<TripPhoto[]>(`/api/trips/${tripId}/photos`, {
+    method: 'GET',
+  })
+}
+
 export async function uploadTripCoverImage(
   tripId: number,
   file: File,
@@ -124,6 +145,35 @@ export async function uploadTripCoverImage(
     {
       method: 'POST',
       body: formData,
+    },
+  )
+}
+
+export async function uploadTripPhoto(
+  tripId: number,
+  file: File,
+): Promise<TripPhoto> {
+  const formData = new FormData()
+
+  formData.append('file', file)
+
+  return apiRequest<TripPhoto>(
+    `/api/trips/${tripId}/photos`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  )
+}
+
+export async function deleteTripPhoto(
+  tripId: number,
+  photoId: number,
+): Promise<void> {
+  await apiRequest<void>(
+    `/api/trips/${tripId}/photos/${photoId}`,
+    {
+      method: 'DELETE',
     },
   )
 }
