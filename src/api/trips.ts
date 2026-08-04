@@ -36,6 +36,13 @@ export interface TripListItem extends Trip {
   participantCount: number
 }
 
+export interface TripParticipant {
+  memberId: number
+  nickname: string
+  profileImagePath: string | null
+  role: TripRole
+}
+
 export interface TripSummary {
   totalCount: number
   ownedCount: number
@@ -96,6 +103,14 @@ export async function getTripDetail(
   )
 }
 
+export async function getTripParticipants(
+  tripId: number,
+): Promise<TripParticipant[]> {
+  return apiRequest<TripParticipant[]>(`/api/trips/${tripId}/members`, {
+    method: 'GET',
+  })
+}
+
 export async function uploadTripCoverImage(
   tripId: number,
   file: File,
@@ -111,4 +126,14 @@ export async function uploadTripCoverImage(
       body: formData,
     },
   )
+}
+
+export async function sendTripInvitation(
+  tripId: number,
+  nickname: string,
+): Promise<void> {
+  await apiRequest<void>(`/api/trips/${tripId}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify({ nickname }),
+  })
 }

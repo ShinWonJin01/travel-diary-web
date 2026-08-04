@@ -77,11 +77,6 @@ const emit = defineEmits<{
             </span>
           </div>
         </article>
-
-        <p class="participant-list-guide">
-          현재 여행 상세 API에서는 전체 참여자 정보가 제공되지 않아
-          확인 가능한 참여자만 표시하고 있습니다.
-        </p>
       </div>
 
       <form
@@ -269,16 +264,6 @@ const emit = defineEmits<{
 .participant-modal-list article div span {
   font-size: 9px;
   color: #939ba6;
-}
-
-.participant-list-guide {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 9px;
-  line-height: 1.6;
-  color: #7e8793;
-  background: #f7f8fa;
 }
 
 .participant-invite-form {

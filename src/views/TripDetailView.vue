@@ -3,8 +3,19 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getStoredMember } from '@/api/auth'
-import { ApiError, apiRequest } from '@/api/http'
-import { deleteTrip, getTripDetail, getTrips, leaveTrip, updateTrip, type Trip, type TripListItem } from '@/api/trips'
+import { ApiError } from '@/api/http'
+import {
+  deleteTrip,
+  getTripDetail,
+  getTripParticipants,
+  getTrips,
+  leaveTrip,
+  sendTripInvitation,
+  updateTrip,
+  type Trip,
+  type TripListItem,
+  type TripParticipant,
+} from '@/api/trips'
 
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
 import TripAiDiaryTab from '@/components/trips/detail/TripAiDiaryTab.vue'
@@ -66,6 +77,8 @@ const isCoverImageBroken = ref(false)
 const isTripEditModalOpen = ref(false)
 const isSavingTrip = ref(false)
 const tripEditErrorMessage = ref('')
+
+const tripParticipants = ref<TripParticipant[]>([])
 
 const isParticipantModalOpen = ref(false)
 const inviteNickname = ref('')
@@ -149,27 +162,44 @@ watch(
   },
 )
 
-/*
- * 현재 상세 API에는 전체 참여자 목록이 없으므로
- * 실제 DB 응답에 포함된 여행 생성자만 우선 표시합니다.
- * 참여자 API를 연결하면 이 computed를 교체합니다.
- */
+const participantAvatarClasses = [
+  'avatar-blue',
+  'avatar-green',
+  'avatar-orange',
+]
+
 const participants = computed<Participant[]>(() => {
-  if (!trip.value) return []
+  return tripParticipants.value.map((participant, index) => {
+    let profileImageUrl: string | null = null
 
-  return [
-    {
-      id: trip.value.ownerId,
-      nickname: trip.value.ownerNickname,
-      profileImageUrl: null,
-      avatarClass: 'avatar-blue',
-    },
-  ]
+    if (participant.profileImagePath) {
+      if (
+        participant.profileImagePath.startsWith('http://') ||
+        participant.profileImagePath.startsWith('https://')
+      ) {
+        profileImageUrl = participant.profileImagePath
+      } else {
+        const cleanedPath = participant.profileImagePath.replaceAll('\\', '/')
+        const normalizedPath = cleanedPath.startsWith('/')
+          ? cleanedPath
+          : `/${cleanedPath}`
+
+        profileImageUrl = `${backendBaseUrl}${normalizedPath}`
+      }
+    }
+
+    return {
+      id: participant.memberId,
+      nickname: participant.nickname,
+      profileImageUrl,
+      avatarClass:
+        participantAvatarClasses[index % participantAvatarClasses.length] ??
+        'avatar-blue',
+    }
+  })
 })
 
-const participantCount = computed(() => {
-  return tripListItem.value?.participantCount ?? participants.value.length
-})
+const participantCount = computed(() => participants.value.length)
 
 const visibleParticipants = computed(() => participants.value.slice(0, 4))
 
@@ -188,6 +218,7 @@ const loadTrip = async () => {
   if (tripId.value === null) {
     trip.value = null
     tripListItem.value = null
+    tripParticipants.value = []
     errorMessage.value = '올바르지 않은 여행 주소입니다.'
     isLoading.value = false
     return
@@ -198,16 +229,19 @@ const loadTrip = async () => {
   isCoverImageBroken.value = false
 
   try {
-    const [tripDetail, tripItems] = await Promise.all([
+    const [tripDetail, tripItems, participantItems] = await Promise.all([
       getTripDetail(tripId.value),
       getTrips().catch(() => []),
+      getTripParticipants(tripId.value),
     ])
 
     trip.value = tripDetail
     tripListItem.value = tripItems.find((item) => item.id === tripId.value) ?? null
+    tripParticipants.value = participantItems
   } catch (error: unknown) {
     trip.value = null
     tripListItem.value = null
+    tripParticipants.value = []
 
     if (error instanceof ApiError) {
       errorMessage.value = error.message
@@ -340,10 +374,7 @@ const sendInvitation = async () => {
   invitationErrorMessage.value = ''
 
   try {
-    await apiRequest(`/api/trips/${tripId.value}/invitations`, {
-      method: 'POST',
-      body: JSON.stringify({ nickname }),
-    })
+    await sendTripInvitation(tripId.value, nickname)
 
     inviteNickname.value = ''
     invitationMessage.value = '여행 초대를 보냈습니다.'
