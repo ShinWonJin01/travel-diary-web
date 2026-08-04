@@ -8,6 +8,14 @@ export interface TripCreateRequest {
   description: string
 }
 
+export interface TripUpdateRequest {
+  title: string
+  destination: string
+  startDate: string
+  endDate: string | null
+  description: string
+}
+
 export interface Trip {
   id: number
   title: string
@@ -39,6 +47,16 @@ export async function createTrip(
 ): Promise<Trip> {
   return apiRequest<Trip>('/api/trips', {
     method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function updateTrip(
+  tripId: number,
+  request: TripUpdateRequest,
+): Promise<Trip> {
+  return apiRequest<Trip>(`/api/trips/${tripId}`, {
+    method: 'PUT',
     body: JSON.stringify(request),
   })
 }

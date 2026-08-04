@@ -4,11 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getStoredMember } from '@/api/auth'
 import { ApiError, apiRequest } from '@/api/http'
-import { getTripDetail, getTrips, type Trip, type TripListItem } from '@/api/trips'
+import { getTripDetail, getTrips, updateTrip, type Trip, type TripListItem } from '@/api/trips'
 
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
 import TripAiDiaryTab from '@/components/trips/detail/TripAiDiaryTab.vue'
 import TripDetailSidebar from '@/components/trips/detail/TripDetailSidebar.vue'
+import TripEditModal from '@/components/trips/detail/TripEditModal.vue'
 import TripMapTab from '@/components/trips/detail/TripMapTab.vue'
 import TripMobileTabs from '@/components/trips/detail/TripMobileTabs.vue'
 import TripOverviewTab from '@/components/trips/detail/TripOverviewTab.vue'
@@ -44,6 +45,14 @@ interface Participant {
   avatarClass: string
 }
 
+interface TripEditForm {
+  title: string
+  destination: string
+  startDate: string
+  endDate: string
+  description: string
+}
+
 const route = useRoute()
 const router = useRouter()
 const currentMember = getStoredMember()
@@ -53,6 +62,10 @@ const tripListItem = ref<TripListItem | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
 const isCoverImageBroken = ref(false)
+
+const isTripEditModalOpen = ref(false)
+const isSavingTrip = ref(false)
+const tripEditErrorMessage = ref('')
 
 const isParticipantModalOpen = ref(false)
 const inviteNickname = ref('')
@@ -344,7 +357,62 @@ const sendInvitation = async () => {
 
 /* 여행 관리 */
 const openTripEdit = () => {
-  window.alert('여행 정보 수정 API와 수정 화면을 만든 뒤 이 버튼에 연결합니다.')
+  tripEditErrorMessage.value = ''
+  isTripEditModalOpen.value = true
+}
+
+const closeTripEdit = () => {
+  if (isSavingTrip.value) return
+
+  isTripEditModalOpen.value = false
+  tripEditErrorMessage.value = ''
+}
+
+const handleUpdateTrip = async (form: TripEditForm) => {
+  if (tripId.value === null) return
+
+  if (!form.title) {
+    tripEditErrorMessage.value = '여행 제목을 입력해 주세요.'
+    return
+  }
+
+  if (!form.destination) {
+    tripEditErrorMessage.value = '대표 지역을 입력해 주세요.'
+    return
+  }
+
+  if (!form.startDate) {
+    tripEditErrorMessage.value = '여행 시작일을 선택해 주세요.'
+    return
+  }
+
+  if (form.endDate && form.endDate < form.startDate) {
+    tripEditErrorMessage.value = '종료일은 시작일보다 빠를 수 없습니다.'
+    return
+  }
+
+  isSavingTrip.value = true
+  tripEditErrorMessage.value = ''
+
+  try {
+    const updatedTrip = await updateTrip(tripId.value, {
+      title: form.title,
+      destination: form.destination,
+      startDate: form.startDate,
+      endDate: form.endDate || null,
+      description: form.description,
+    })
+
+    trip.value = updatedTrip
+    isTripEditModalOpen.value = false
+  } catch (error: unknown) {
+    tripEditErrorMessage.value =
+      error instanceof ApiError
+        ? error.message
+        : '여행 정보를 수정하지 못했습니다.'
+  } finally {
+    isSavingTrip.value = false
+  }
 }
 
 const handleDeleteTrip = () => {
@@ -416,6 +484,19 @@ const handleLeaveTrip = () => {
         <TripAiDiaryTab v-else />
       </section>
     </div>
+
+    <TripEditModal
+      v-if="isTripEditModalOpen && trip"
+      :title="trip.title"
+      :destination="trip.destination"
+      :start-date="trip.startDate"
+      :end-date="trip.endDate"
+      :description="trip.description"
+      :is-saving="isSavingTrip"
+      :error-message="tripEditErrorMessage"
+      @close="closeTripEdit"
+      @save="handleUpdateTrip"
+    />
 
     <ParticipantManagementModal
       v-if="isParticipantModalOpen && trip"
