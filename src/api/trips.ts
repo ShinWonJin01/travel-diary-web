@@ -61,6 +61,18 @@ export async function updateTrip(
   })
 }
 
+export async function deleteTrip(tripId: number): Promise<void> {
+  await apiRequest<void>(`/api/trips/${tripId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function leaveTrip(tripId: number): Promise<void> {
+  await apiRequest<void>(`/api/trips/${tripId}/members/me`, {
+    method: 'DELETE',
+  })
+}
+
 export async function getTrips(): Promise<TripListItem[]> {
   return apiRequest<TripListItem[]>('/api/trips', {
     method: 'GET',

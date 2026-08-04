@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getStoredMember } from '@/api/auth'
 import { ApiError, apiRequest } from '@/api/http'
-import { getTripDetail, getTrips, updateTrip, type Trip, type TripListItem } from '@/api/trips'
+import { deleteTrip, getTripDetail, getTrips, leaveTrip, updateTrip, type Trip, type TripListItem } from '@/api/trips'
 
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
 import TripAiDiaryTab from '@/components/trips/detail/TripAiDiaryTab.vue'
@@ -415,12 +415,46 @@ const handleUpdateTrip = async (form: TripEditForm) => {
   }
 }
 
-const handleDeleteTrip = () => {
-  window.alert('여행 삭제 API를 만든 뒤 이 메뉴에 연결합니다.')
+const handleDeleteTrip = async () => {
+  if (tripId.value === null) return
+
+  const confirmed = window.confirm(
+    '여행을 삭제하시겠습니까?\n삭제한 여행은 복구할 수 없습니다.',
+  )
+
+  if (!confirmed) return
+
+  try {
+    await deleteTrip(tripId.value)
+    await router.push('/trips')
+  } catch (error: unknown) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : '여행을 삭제하지 못했습니다.',
+    )
+  }
 }
 
-const handleLeaveTrip = () => {
-  window.alert('여행 나가기 API를 만든 뒤 이 메뉴에 연결합니다.')
+const handleLeaveTrip = async () => {
+  if (tripId.value === null) return
+
+  const confirmed = window.confirm(
+    '이 여행에서 나가시겠습니까?\n나간 뒤에는 다시 초대를 받아야 참여할 수 있습니다.',
+  )
+
+  if (!confirmed) return
+
+  try {
+    await leaveTrip(tripId.value)
+    await router.push('/trips')
+  } catch (error: unknown) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : '여행에서 나가지 못했습니다.',
+    )
+  }
 }
 </script>
 
