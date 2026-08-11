@@ -53,6 +53,8 @@ export interface TripPhoto {
   takenAt: string | null
   latitude: number | null
   longitude: number | null
+  locationName: string | null
+  memo: string | null
   createdAt: string
 }
 
@@ -174,6 +176,34 @@ export async function deleteTripPhoto(
     `/api/trips/${tripId}/photos/${photoId}`,
     {
       method: 'DELETE',
+    },
+  )
+}
+
+export async function updateTripPhotoMemo(
+  tripId: number,
+  photoId: number,
+  memo: string,
+): Promise<TripPhoto> {
+  return apiRequest<TripPhoto>(
+    `/api/trips/${tripId}/photos/${photoId}/memo`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ memo }),
+    },
+  )
+}
+
+export async function updateTripPhotoTakenAt(
+  tripId: number,
+  photoId: number,
+  takenAt: string | null,
+): Promise<TripPhoto> {
+  return apiRequest<TripPhoto>(
+    `/api/trips/${tripId}/photos/${photoId}/taken-at`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ takenAt }),
     },
   )
 }

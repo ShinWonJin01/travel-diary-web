@@ -4,6 +4,8 @@ interface TimelineEntry {
   time: string
   title: string
   thumbnailClass: string
+  imageUrl: string
+  memo: string | null
 }
 
 interface TimelineGroup {
@@ -50,13 +52,15 @@ defineProps<{
           <div class="timeline-entry-content">
             <div class="timeline-texts">
               <strong>{{ entry.title }}</strong>
-              <p>여행 중 기록된 일정입니다.</p>
+              <p v-if="entry.memo">{{ entry.memo }}</p>
+              <p v-else>메모가 없습니다.</p>
             </div>
 
-            <div
+            <img
               class="timeline-thumbnail"
-              :class="entry.thumbnailClass"
-            ></div>
+              :src="entry.imageUrl"
+              :alt="entry.title"
+            />
           </div>
         </article>
       </section>
@@ -182,26 +186,7 @@ defineProps<{
   height: 58px;
   flex: 0 0 auto;
   border-radius: 10px;
-}
-
-.thumb-blue {
-  background: linear-gradient(145deg, #88aeda, #4d7cbd);
-}
-
-.thumb-green {
-  background: linear-gradient(145deg, #96c09e, #5d8c66);
-}
-
-.thumb-orange {
-  background: linear-gradient(145deg, #f0b98c, #ba7d58);
-}
-
-.thumb-purple {
-  background: linear-gradient(145deg, #b4a6d8, #7d6ca8);
-}
-
-.thumb-sky {
-  background: linear-gradient(145deg, #8fd1ea, #5f99c7);
+  object-fit: cover;
 }
 
 @media (max-width: 760px) {
