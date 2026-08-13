@@ -58,6 +58,14 @@ export interface TripPhoto {
   createdAt: string
 }
 
+export interface TripAiDiary {
+  id: number
+  tripId: number
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface TripSummary {
   totalCount: number
   ownedCount: number
@@ -216,4 +224,24 @@ export async function sendTripInvitation(
     method: 'POST',
     body: JSON.stringify({ nickname }),
   })
+}
+
+export async function generateTripAiDiary(
+  tripId: number,
+): Promise<TripAiDiary> {
+  return apiRequest<TripAiDiary>(
+    `/api/trips/${tripId}/ai-diary`,
+    { method: 'POST' },
+  )
+}
+
+export async function getTripAiDiary(
+  tripId: number,
+): Promise<TripAiDiary | null> {
+  const diary = await apiRequest<TripAiDiary | undefined>(
+    `/api/trips/${tripId}/ai-diary`,
+    { method: 'GET' },
+  )
+
+  return diary ?? null
 }

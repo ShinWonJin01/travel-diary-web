@@ -16,9 +16,12 @@ import {
   updateTripPhotoMemo,
   updateTripPhotoTakenAt,
   uploadTripPhoto,
+  generateTripAiDiary,
+  getTripAiDiary,
   type Trip,
   type TripParticipant,
   type TripPhoto,
+  type TripAiDiary,
 } from '@/api/trips'
 
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
@@ -104,6 +107,9 @@ const inviteNickname = ref('')
 const isInviting = ref(false)
 const invitationMessage = ref('')
 const invitationErrorMessage = ref('')
+
+const aiDiary = ref<TripAiDiary | null>(null)
+const isGeneratingAiDiary = ref(false)
 
 const photoInputRef = ref<HTMLInputElement | null>(null)
 
@@ -234,19 +240,22 @@ const loadTrip = async () => {
   isCoverImageBroken.value = false
 
   try {
-    const [tripDetail, participantItems, photoItems] = await Promise.all([
+    const [tripDetail, participantItems, photoItems, diary] = await Promise.all([
       getTripDetail(tripId.value),
       getTripParticipants(tripId.value),
       getTripPhotos(tripId.value),
+      getTripAiDiary(tripId.value).catch(() => null),
     ])
 
     trip.value = tripDetail
     tripParticipants.value = participantItems
     tripPhotos.value = photoItems
+    aiDiary.value = diary
   } catch (error: unknown) {
     trip.value = null
     tripParticipants.value = []
     tripPhotos.value = []
+    aiDiary.value = null
 
     errorMessage.value =
       error instanceof ApiError
@@ -600,6 +609,24 @@ const handleLeaveTrip = async () => {
     )
   }
 }
+
+const handleGenerateAiDiary = async () => {
+  if (tripId.value === null || isGeneratingAiDiary.value) return
+
+  isGeneratingAiDiary.value = true
+
+  try {
+    aiDiary.value = await generateTripAiDiary(tripId.value)
+  } catch (error: unknown) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : 'AI 여행기를 생성하지 못했습니다.',
+    )
+  } finally {
+    isGeneratingAiDiary.value = false
+  }
+}
 </script>
 
 <template>
@@ -667,7 +694,12 @@ const handleLeaveTrip = async () => {
           :photos="mapPhotos"
         />
 
-        <TripAiDiaryTab v-else-if="activeTab === 'ai-diary'" />
+        <TripAiDiaryTab
+          v-else-if="activeTab === 'ai-diary'"
+          :content="aiDiary?.content ?? null"
+          :is-generating="isGeneratingAiDiary"
+          @generate="handleGenerateAiDiary"
+        />
       </section>
     </div>
 

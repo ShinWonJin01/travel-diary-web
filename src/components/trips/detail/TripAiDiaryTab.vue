@@ -1,3 +1,14 @@
+<script setup lang="ts">
+defineProps<{
+  content: string | null
+  isGenerating: boolean
+}>()
+
+const emit = defineEmits<{
+  generate: []
+}>()
+</script>
+
 <template>
   <section class="panel-card ai-panel">
     <div class="panel-heading">
@@ -8,18 +19,36 @@
       <div class="ai-badge">AI</div>
 
       <div class="ai-content">
-        <strong>사진과 타임라인을 바탕으로 여행기를 생성해보세요.</strong>
+        <template v-if="content">
+          <strong>AI가 작성한 여행기</strong>
+          <p class="ai-diary-content">{{ content }}</p>
 
-        <p>
-          사진, 장소, 시간, 메모를 종합하여 자연스러운 여행 기록을 자동으로 만들어줍니다.
-        </p>
+          <button
+            type="button"
+            class="primary-action-button"
+            :disabled="isGenerating"
+            @click="emit('generate')"
+          >
+            {{ isGenerating ? '여행기 생성 중...' : 'AI 여행기 다시 만들기' }}
+          </button>
+        </template>
 
-        <button
-          type="button"
-          class="primary-action-button"
-        >
-          AI 여행기 만들기
-        </button>
+        <template v-else>
+          <strong>사진과 타임라인을 바탕으로 여행기를 생성해보세요.</strong>
+
+          <p>
+            사진, 장소, 시간, 메모를 종합하여 자연스러운 여행 기록을 자동으로 만들어줍니다.
+          </p>
+
+          <button
+            type="button"
+            class="primary-action-button"
+            :disabled="isGenerating"
+            @click="emit('generate')"
+          >
+            {{ isGenerating ? '여행기 생성 중...' : 'AI 여행기 만들기' }}
+          </button>
+        </template>
       </div>
     </div>
   </section>
@@ -72,6 +101,10 @@
   background: linear-gradient(145deg, #5c79f0, #7d63c9);
 }
 
+.ai-diary-content {
+  white-space: pre-wrap;
+}
+
 .ai-content strong {
   font-size: 18px;
   color: #252b37;
@@ -95,6 +128,11 @@
   color: #ffffff;
   background: #3565f3;
   cursor: pointer;
+}
+
+.primary-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 760px) {
