@@ -245,3 +245,21 @@ export async function getTripAiDiary(
 
   return diary ?? null
 }
+
+export async function updateTripPhotoLocation(
+  tripId: number,
+  photoId: number,
+  latitude: number,
+  longitude: number,
+): Promise<TripPhoto> {
+  return apiRequest<TripPhoto>(
+    `/api/trips/${tripId}/photos/${photoId}/location`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        latitude,
+        longitude,
+      }),
+    },
+  )
+}

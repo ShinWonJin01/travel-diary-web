@@ -7,21 +7,22 @@ import { ApiError } from '@/api/http'
 import {
   deleteTrip,
   deleteTripPhoto,
+  generateTripAiDiary,
+  getTripAiDiary,
   getTripDetail,
   getTripParticipants,
   getTripPhotos,
   leaveTrip,
   sendTripInvitation,
   updateTrip,
+  updateTripPhotoLocation,
   updateTripPhotoMemo,
   updateTripPhotoTakenAt,
   uploadTripPhoto,
-  generateTripAiDiary,
-  getTripAiDiary,
   type Trip,
+  type TripAiDiary,
   type TripParticipant,
   type TripPhoto,
-  type TripAiDiary,
 } from '@/api/trips'
 
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
@@ -58,8 +59,11 @@ interface PhotoItem {
   imageUrl: string
   memo: string | null
   takenAt: string | null
+  latitude: number | null
+  longitude: number | null
   canDelete: boolean
   canEditMemo: boolean
+  canEditLocation: boolean
 }
 
 interface MapPhoto {
@@ -94,6 +98,8 @@ const currentMember = getStoredMember()
 const trip = ref<Trip | null>(null)
 const tripParticipants = ref<TripParticipant[]>([])
 const tripPhotos = ref<TripPhoto[]>([])
+const aiDiary = ref<TripAiDiary | null>(null)
+
 const isLoading = ref(true)
 const errorMessage = ref('')
 const isCoverImageBroken = ref(false)
@@ -108,9 +114,7 @@ const isInviting = ref(false)
 const invitationMessage = ref('')
 const invitationErrorMessage = ref('')
 
-const aiDiary = ref<TripAiDiary | null>(null)
 const isGeneratingAiDiary = ref(false)
-
 const photoInputRef = ref<HTMLInputElement | null>(null)
 
 const tripId = computed<number | null>(() => {
@@ -204,32 +208,29 @@ watch(
 
 const participantAvatarClasses = ['avatar-blue', 'avatar-green', 'avatar-orange']
 
-const participants = computed<Participant[]>(() => {
-  return tripParticipants.value.map((participant, index) => ({
+const participants = computed<Participant[]>(() =>
+  tripParticipants.value.map((participant, index) => ({
     id: participant.memberId,
     nickname: participant.nickname,
     profileImageUrl: toImageUrl(participant.profileImagePath) || null,
     avatarClass:
       participantAvatarClasses[index % participantAvatarClasses.length] ?? 'avatar-blue',
-  }))
-})
+  })),
+)
 
 const participantCount = computed(() => participants.value.length)
 const visibleParticipants = computed(() => participants.value.slice(0, 4))
-
 const remainingParticipantCount = computed(() =>
   Math.max(participantCount.value - visibleParticipants.value.length, 0),
 )
-
-const isOwner = computed(() => {
-  return currentMember?.id === trip.value?.ownerId
-})
+const isOwner = computed(() => currentMember?.id === trip.value?.ownerId)
 
 const loadTrip = async () => {
   if (tripId.value === null) {
     trip.value = null
     tripParticipants.value = []
     tripPhotos.value = []
+    aiDiary.value = null
     errorMessage.value = '올바르지 않은 여행 주소입니다.'
     isLoading.value = false
     return
@@ -258,9 +259,7 @@ const loadTrip = async () => {
     aiDiary.value = null
 
     errorMessage.value =
-      error instanceof ApiError
-        ? error.message
-        : '여행 정보를 불러오지 못했습니다.'
+      error instanceof ApiError ? error.message : '여행 정보를 불러오지 못했습니다.'
   } finally {
     isLoading.value = false
   }
@@ -326,8 +325,8 @@ const timelineGroups = computed<TimelineGroup[]>(() => {
   })
 })
 
-const photos = computed<PhotoItem[]>(() => {
-  return tripPhotos.value.map((photo) => {
+const photos = computed<PhotoItem[]>(() =>
+  tripPhotos.value.map((photo) => {
     const canManagePhoto =
       isOwner.value || photo.uploadedByMemberId === currentMember?.id
 
@@ -338,14 +337,17 @@ const photos = computed<PhotoItem[]>(() => {
       imageUrl: toImageUrl(photo.filePath),
       memo: photo.memo,
       takenAt: photo.takenAt,
+      latitude: photo.latitude,
+      longitude: photo.longitude,
       canDelete: canManagePhoto,
       canEditMemo: canManagePhoto,
+      canEditLocation: canManagePhoto,
     }
-  })
-})
+  }),
+)
 
-const mapPhotos = computed<MapPhoto[]>(() => {
-  return tripPhotos.value.flatMap((photo) => {
+const mapPhotos = computed<MapPhoto[]>(() =>
+  tripPhotos.value.flatMap((photo) => {
     if (photo.latitude === null || photo.longitude === null) return []
 
     return [{
@@ -357,17 +359,14 @@ const mapPhotos = computed<MapPhoto[]>(() => {
       takenAt: photo.takenAt,
       memo: photo.memo,
     }]
-  })
-})
+  }),
+)
 
 const validTabs: TripTab[] = ['overview', 'timeline', 'photos', 'map', 'ai-diary']
 
 const activeTab = computed<TripTab>(() => {
   const tab = route.query.tab
-  if (typeof tab === 'string' && validTabs.includes(tab as TripTab)) {
-    return tab as TripTab
-  }
-
+  if (typeof tab === 'string' && validTabs.includes(tab as TripTab)) return tab as TripTab
   return 'overview'
 })
 
@@ -390,15 +389,13 @@ const openPhotoUpload = () => {
 const handlePhotoSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const id = tripId.value
-
   if (id === null || !input.files?.length) return
 
   const files = Array.from(input.files)
 
   try {
     for (const file of files) {
-      const uploadedPhoto = await uploadTripPhoto(id, file)
-      tripPhotos.value.push(uploadedPhoto)
+      tripPhotos.value.push(await uploadTripPhoto(id, file))
     }
 
     selectTab('photos')
@@ -417,18 +414,30 @@ const handlePhotoSelect = async (event: Event) => {
   }
 }
 
-const handleDeletePhoto = async (photoId: number) => {
+const handleDeletePhotos = async (photoIds: number[]) => {
   const id = tripId.value
-  if (id === null) return
-  if (!window.confirm('이 사진을 삭제하시겠습니까?')) return
+  if (id === null || photoIds.length === 0) return
+
+  const confirmed = window.confirm(
+    `선택한 사진 ${photoIds.length}장을 삭제하시겠습니까?`,
+  )
+  if (!confirmed) return
 
   try {
-    await deleteTripPhoto(id, photoId)
-    tripPhotos.value = tripPhotos.value.filter((photo) => photo.id !== photoId)
+    for (const photoId of photoIds) {
+      await deleteTripPhoto(id, photoId)
+    }
+
+    const deletedIds = new Set(photoIds)
+    tripPhotos.value = tripPhotos.value.filter((photo) => !deletedIds.has(photo.id))
   } catch (error: unknown) {
     window.alert(
-      error instanceof ApiError ? error.message : '사진을 삭제하지 못했습니다.',
+      error instanceof ApiError
+        ? error.message
+        : '선택한 사진을 삭제하지 못했습니다.',
     )
+
+    await loadTrip()
   }
 }
 
@@ -465,6 +474,27 @@ const handleUpdatePhotoTakenAt = async (
       error instanceof ApiError
         ? error.message
         : '사진 촬영시간을 수정하지 못했습니다.',
+    )
+  }
+}
+
+const handleUpdatePhotoLocation = async (
+  photoId: number,
+  latitude: number,
+  longitude: number,
+) => {
+  const id = tripId.value
+  if (id === null) return
+
+  try {
+    replacePhoto(
+      await updateTripPhotoLocation(id, photoId, latitude, longitude),
+    )
+  } catch (error: unknown) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : '사진 위치를 수정하지 못했습니다.',
     )
   }
 }
@@ -521,7 +551,6 @@ const openTripEdit = () => {
 
 const closeTripEdit = () => {
   if (isSavingTrip.value) return
-
   isTripEditModalOpen.value = false
   tripEditErrorMessage.value = ''
 }
@@ -578,7 +607,6 @@ const handleDeleteTrip = async () => {
   const confirmed = window.confirm(
     '여행을 삭제하시겠습니까?\n삭제한 여행은 복구할 수 없습니다.',
   )
-
   if (!confirmed) return
 
   try {
@@ -597,7 +625,6 @@ const handleLeaveTrip = async () => {
   const confirmed = window.confirm(
     '이 여행에서 나가시겠습니까?\n나간 뒤에는 다시 초대를 받아야 참여할 수 있습니다.',
   )
-
   if (!confirmed) return
 
   try {
@@ -684,15 +711,13 @@ const handleGenerateAiDiary = async () => {
           v-else-if="activeTab === 'photos'"
           :photos="photos"
           @add-photo="openPhotoUpload"
-          @delete-photo="handleDeletePhoto"
+          @delete-photos="handleDeletePhotos"
           @update-memo="handleUpdatePhotoMemo"
           @update-taken-at="handleUpdatePhotoTakenAt"
+          @update-location="handleUpdatePhotoLocation"
         />
 
-        <TripMapTab
-          v-else-if="activeTab === 'map'"
-          :photos="mapPhotos"
-        />
+        <TripMapTab v-else-if="activeTab === 'map'" :photos="mapPhotos" />
 
         <TripAiDiaryTab
           v-else-if="activeTab === 'ai-diary'"
@@ -819,6 +844,7 @@ const handleGenerateAiDiary = async () => {
 }
 
 .detail-main { min-width: 0; }
+
 .photo-file-input,
 .mobile-floating-button { display: none; }
 
