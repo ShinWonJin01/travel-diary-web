@@ -2,6 +2,7 @@
 defineProps<{
   content: string | null
   isGenerating: boolean
+  isOwner: boolean
 }>()
 
 const emit = defineEmits<{
@@ -24,6 +25,7 @@ const emit = defineEmits<{
           <p class="ai-diary-content">{{ content }}</p>
 
           <button
+            v-if="isOwner"
             type="button"
             class="primary-action-button"
             :disabled="isGenerating"
@@ -41,6 +43,7 @@ const emit = defineEmits<{
           </p>
 
           <button
+            v-if="isOwner"
             type="button"
             class="primary-action-button"
             :disabled="isGenerating"
@@ -48,6 +51,10 @@ const emit = defineEmits<{
           >
             {{ isGenerating ? '여행기 생성 중...' : 'AI 여행기 만들기' }}
           </button>
+
+          <p v-else class="ai-owner-guide">
+            여행 소유자만 AI 여행기를 생성할 수 있습니다.
+          </p>
         </template>
       </div>
     </div>
@@ -75,9 +82,7 @@ const emit = defineEmits<{
   color: #222834;
 }
 
-.ai-panel {
-  padding-bottom: 22px;
-}
+.ai-panel { padding-bottom: 22px; }
 
 .ai-box {
   display: grid;
@@ -101,9 +106,7 @@ const emit = defineEmits<{
   background: linear-gradient(145deg, #5c79f0, #7d63c9);
 }
 
-.ai-diary-content {
-  white-space: pre-wrap;
-}
+.ai-diary-content { white-space: pre-wrap; }
 
 .ai-content strong {
   font-size: 18px;
@@ -115,6 +118,11 @@ const emit = defineEmits<{
   font-size: 13px;
   line-height: 1.7;
   color: #6e7887;
+}
+
+.ai-owner-guide {
+  font-weight: 600;
+  color: #8a93a2;
 }
 
 .primary-action-button {
@@ -142,13 +150,8 @@ const emit = defineEmits<{
     border-radius: 10px;
   }
 
-  .panel-heading {
-    margin-bottom: 10px;
-  }
-
-  .panel-heading h2 {
-    font-size: 14px;
-  }
+  .panel-heading { margin-bottom: 10px; }
+  .panel-heading h2 { font-size: 14px; }
 
   .ai-box {
     grid-template-columns: 1fr;

@@ -723,6 +723,7 @@ const handleGenerateAiDiary = async () => {
           v-else-if="activeTab === 'ai-diary'"
           :content="aiDiary?.content ?? null"
           :is-generating="isGeneratingAiDiary"
+          :is-owner="isOwner"
           @generate="handleGenerateAiDiary"
         />
       </section>
