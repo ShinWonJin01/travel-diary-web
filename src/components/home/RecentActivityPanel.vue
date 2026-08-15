@@ -1,34 +1,53 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-
-interface Activity {
-  id: number
-  user: string
-  action: string
-  trip: string
-  time: string
-}
+import type { RecentActivity } from '@/api/home'
 
 defineProps<{
-  activities: Activity[]
+  activities: RecentActivity[]
 }>()
+
+const getActivityMessage = (activity: RecentActivity) => {
+  if (activity.photoCount === 1) {
+    return '사진을 추가했습니다.'
+  }
+
+  return `사진 ${activity.photoCount}장을 추가했습니다.`
+}
+
+const formatActivityTime = (createdAt: string) => {
+  const createdTime = new Date(createdAt).getTime()
+  if (Number.isNaN(createdTime)) return ''
+
+  const diff = Math.max(Date.now() - createdTime, 0)
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+
+  if (diff < minute) return '방금 전'
+  if (diff < hour) return `${Math.floor(diff / minute)}분 전`
+  if (diff < day) return `${Math.floor(diff / hour)}시간 전`
+  if (diff < 7 * day) return `${Math.floor(diff / day)}일 전`
+
+  return new Date(createdAt).toLocaleDateString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+  })
+}
 </script>
 
 <template>
   <aside class="activity-area">
     <h1>최근 활동</h1>
 
-    <div class="activity-list">
-      <article
+    <div v-if="activities.length > 0" class="activity-list">
+      <RouterLink
         v-for="activity in activities"
-        :key="activity.id"
+        :key="`${activity.tripId}-${activity.actorNickname}-${activity.createdAt}`"
         class="activity-item"
+        :to="`/trips/${activity.tripId}`"
       >
         <div class="activity-profile">
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="8" r="4" />
             <path d="M4 22c0-5 3-8 8-8s8 3 8 8" />
           </svg>
@@ -36,21 +55,22 @@ defineProps<{
 
         <div class="activity-information">
           <p>
-            <strong>{{ activity.user }}님이</strong>
-            {{ activity.action }}
+            <strong>{{ activity.actorNickname }}님이</strong>
+            {{ getActivityMessage(activity) }}
           </p>
 
           <span>
-            {{ activity.trip }} · {{ activity.time }}
+            {{ activity.tripTitle }} · {{ formatActivityTime(activity.createdAt) }}
           </span>
         </div>
-      </article>
+      </RouterLink>
     </div>
 
-    <RouterLink
-      class="create-trip-button"
-      to="/trips/create"
-    >
+    <div v-else class="empty-activity">
+      <p>아직 최근 활동이 없습니다.</p>
+    </div>
+
+    <RouterLink class="create-trip-button" to="/trips/create">
       여행 만들기
     </RouterLink>
   </aside>
@@ -83,6 +103,12 @@ defineProps<{
   grid-template-columns: 42px 1fr;
   align-items: start;
   gap: 13px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.activity-item:hover .activity-information p {
+  color: #3157e8;
 }
 
 .activity-profile {
@@ -120,6 +146,19 @@ defineProps<{
   margin-top: 5px;
   font-size: 10px;
   color: #8f969f;
+}
+
+.empty-activity {
+  display: flex;
+  min-height: 150px;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-activity p {
+  margin: 0;
+  font-size: 12px;
+  color: #959da7;
 }
 
 .create-trip-button {
