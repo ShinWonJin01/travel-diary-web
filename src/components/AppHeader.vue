@@ -7,14 +7,21 @@ import {
   type Member,
 } from '@/api/auth'
 import { getTripDetail } from '@/api/trips'
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  type Notification as ApiNotification,
+  type NotificationType as ApiNotificationType,
+} from '@/api/notifications'
 
-type NotificationType = 'invitation' | 'trip-change' | 'activity' | 'ai'
+type NotificationCategory = 'invitation' | 'trip-change' | 'activity' | 'trip-deleted'
 
 interface NotificationItem {
   id: number
-  type: NotificationType
+  type: NotificationCategory
   message: string
-  tripTitle: string
   time: string
   isRead: boolean
   to: string
@@ -39,48 +46,95 @@ const tripDetailTitle = ref('여행 상세')
 
 const isNotificationOpen = ref(false)
 
-const notifications = ref<NotificationItem[]>([
-  {
-    id: 1,
-    type: 'invitation',
-    message: '새로운 여행 초대가 도착했습니다.',
-    tripTitle: '유럽 배낭여행',
-    time: '5분 전',
-    isRead: false,
-    to: '/invitations',
-  },
-  {
-    id: 2,
-    type: 'trip-change',
-    message: '여행 일정이 변경되었습니다.',
-    tripTitle: '제주도 가족여행',
-    time: '30분 전',
-    isRead: false,
-    to: '/trips',
-  },
-  {
-    id: 3,
-    type: 'activity',
-    message: '김민수님이 사진 8장을 추가했습니다.',
-    tripTitle: '제주도 가족여행',
-    time: '1시간 전',
-    isRead: false,
-    to: '/trips?filter=participating',
-  },
-  {
-    id: 4,
-    type: 'ai',
-    message: 'AI 여행기가 완성되었습니다.',
-    tripTitle: '도쿄 여행',
-    time: '어제',
-    isRead: true,
-    to: '/trips',
-  },
-])
+const notifications = ref<NotificationItem[]>([])
 
-const unreadCount = computed(() => {
-  return notifications.value.filter((notification) => !notification.isRead).length
-})
+const getNotificationCategory = (
+  type: ApiNotificationType,
+): NotificationCategory => {
+  switch (type) {
+    case 'TRIP_INVITED':
+    case 'INVITATION_ACCEPTED':
+    case 'INVITATION_REJECTED':
+      return 'invitation'
+
+    case 'TRIP_UPDATED':
+      return 'trip-change'
+
+    case 'MEMBER_LEFT_TRIP':
+      return 'activity'
+    
+    case 'TRIP_DELETED':
+      return 'trip-deleted'
+  }
+}
+
+const getNotificationLink = (notification: ApiNotification) => {
+  if (notification.type === 'TRIP_INVITED') {
+    return '/invitations'
+  }
+
+  if (notification.tripId !== null) {
+    return `/trips/${notification.tripId}`
+  }
+
+  return '/trips'
+}
+
+const formatNotificationTime = (createdAt: string) => {
+  const createdTime = new Date(createdAt).getTime()
+  const diff = Date.now() - createdTime
+
+  if (Number.isNaN(createdTime)) return ''
+
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+
+  if (diff < minute) return '방금 전'
+  if (diff < hour) return `${Math.floor(diff / minute)}분 전`
+  if (diff < day) return `${Math.floor(diff / hour)}시간 전`
+  if (diff < 7 * day) return `${Math.floor(diff / day)}일 전`
+
+  return new Date(createdAt).toLocaleDateString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+  })
+}
+
+const loadNotifications = async () => {
+  try {
+    const response = await getNotifications()
+
+    notifications.value = response.map((notification) => ({
+      id: notification.id,
+      type: getNotificationCategory(notification.type),
+      message: notification.message,
+      time: formatNotificationTime(notification.createdAt),
+      isRead: notification.read,
+      to: getNotificationLink(notification),
+    }))
+
+    unreadCount.value =
+      notifications.value.filter((notification) => !notification.isRead).length
+  } catch {
+    notifications.value = []
+  }
+}
+
+const unreadCount = ref(0)
+
+const loadUnreadCount = async () => {
+  if (!currentMember.value) {
+    unreadCount.value = 0
+    return
+  }
+
+  try {
+    unreadCount.value = await getUnreadNotificationCount()
+  } catch {
+    unreadCount.value = 0
+  }
+}
 
 const mobileTitle = computed(() => {
   switch (route.name) {
@@ -129,7 +183,7 @@ const loadTripDetailTitle = async () => {
   }
 }
 
-const getNotificationTypeLabel = (type: NotificationType) => {
+const getNotificationTypeLabel = (type: NotificationCategory) => {
   switch (type) {
     case 'invitation':
       return '초대'
@@ -139,14 +193,18 @@ const getNotificationTypeLabel = (type: NotificationType) => {
 
     case 'activity':
       return '참여자 활동'
-
-    case 'ai':
-      return 'AI 여행기'
+    
+    case 'trip-deleted':
+      return '여행 삭제'
   }
 }
 
-const toggleNotificationPopup = () => {
+const toggleNotificationPopup = async () => {
   isNotificationOpen.value = !isNotificationOpen.value
+
+  if (isNotificationOpen.value) {
+    await loadNotifications()
+  }
 }
 
 const closeNotificationOnOutsideClick = (event: MouseEvent) => {
@@ -167,16 +225,36 @@ const closeNotificationOnOutsideClick = (event: MouseEvent) => {
   isNotificationOpen.value = false
 }
 
-const markAllAsRead = () => {
-  notifications.value.forEach((notification) => {
-    notification.isRead = true
-  })
+const markAllAsRead = async () => {
+  if (unreadCount.value === 0) return
+
+  try {
+    await markAllNotificationsAsRead()
+
+    notifications.value.forEach((notification) => {
+      notification.isRead = true
+    })
+
+    unreadCount.value = 0
+  } catch {
+    await loadNotifications()
+    await loadUnreadCount()
+  }
 }
 
 const openNotification = async (notification: NotificationItem) => {
-  notification.isRead = true
-  isNotificationOpen.value = false
+  if (!notification.isRead) {
+    try {
+      await markNotificationAsRead(notification.id)
 
+      notification.isRead = true
+      unreadCount.value = Math.max(unreadCount.value - 1, 0)
+    } catch {
+      // 읽음 처리 실패 시에도 관련 화면 이동은 허용
+    }
+  }
+
+  isNotificationOpen.value = false
   await router.push(notification.to)
 }
 
@@ -206,6 +284,7 @@ watch(
   () => route.fullPath,
   () => {
     isNotificationOpen.value = false
+    void loadUnreadCount()
   },
 )
 
@@ -220,6 +299,7 @@ watch(
 )
 
 onMounted(() => {
+  void loadUnreadCount()
   document.addEventListener('click', closeNotificationOnOutsideClick)
 })
 
@@ -298,8 +378,6 @@ onBeforeUnmount(() => {
                 </strong>
 
                 <span class="notification-meta">
-                  {{ notification.tripTitle }}
-                  <span>·</span>
                   {{ notification.time }}
                 </span>
               </span>
@@ -417,8 +495,6 @@ onBeforeUnmount(() => {
               </strong>
 
               <span class="notification-meta">
-                {{ notification.tripTitle }}
-                <span>·</span>
                 {{ notification.time }}
               </span>
             </span>
@@ -785,9 +861,9 @@ onBeforeUnmount(() => {
   background: #e7f7f0;
 }
 
-.notification-type.ai {
-  color: #7052b4;
-  background: #f0eaff;
+.notification-type.trip-deleted {
+  color: #c23b43;
+  background: #fdecee;
 }
 
 .notification-information strong {
