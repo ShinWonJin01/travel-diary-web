@@ -80,3 +80,32 @@ export async function apiRequest<T>(
 
   return responseData as T
 }
+
+export async function apiBlobRequest(
+  path: string,
+  options: RequestInit = {},
+): Promise<Blob> {
+  const token =
+    sessionStorage.getItem('accessToken') ??
+    localStorage.getItem('accessToken')
+
+  const headers = new Headers(options.headers)
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+  })
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `이미지를 불러오는 중 오류가 발생했습니다. (${response.status})`,
+    )
+  }
+
+  return response.blob()
+}
