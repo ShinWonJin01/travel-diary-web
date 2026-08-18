@@ -1,30 +1,24 @@
 <script setup lang="ts">
+import {
+  onBeforeUnmount,
+  ref,
+  watch,
+} from 'vue'
 import { useRouter } from 'vue-router'
 
+import { apiBlobRequest } from '@/api/http'
 import {
   type TripListItem,
   type TripRole,
 } from '@/api/trips'
 
-defineProps<{
+const props = defineProps<{
   trip: TripListItem
 }>()
 
 const router = useRouter()
 
-const backendBaseUrl = (() => {
-  const configuredUrl = import.meta.env.VITE_API_BASE_URL as
-    | string
-    | undefined
-
-  if (!configuredUrl || configuredUrl.startsWith('/')) {
-    return `${window.location.protocol}//${window.location.hostname}:8080`
-  }
-
-  return configuredUrl
-    .replace(/\/api\/?$/, '')
-    .replace(/\/$/, '')
-})()
+const coverImageUrl = ref('')
 
 const thumbnailClasses = [
   'thumbnail-tokyo',
@@ -62,23 +56,63 @@ const getThumbnailClass = (tripId: number) => {
   return thumbnailClasses[index]
 }
 
-const getCoverImageUrl = (coverImagePath: string) => {
+const revokeCoverImageUrl = () => {
+  if (coverImageUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverImageUrl.value)
+  }
+
+  coverImageUrl.value = ''
+}
+
+const loadCoverImage = async () => {
+  revokeCoverImageUrl()
+
+  const coverImagePath =
+    props.trip.coverImagePath
+
+  if (!coverImagePath) {
+    return
+  }
+
   if (
     coverImagePath.startsWith('http://')
     || coverImagePath.startsWith('https://')
   ) {
-    return coverImagePath
+    coverImageUrl.value = coverImagePath
+    return
   }
 
-  const cleanedPath = coverImagePath.replaceAll('\\', '/')
+  try {
+    const blob = await apiBlobRequest(
+      `/api/trips/${props.trip.id}/cover-image/file`,
+    )
 
-  const normalizedPath =
-    cleanedPath.startsWith('/')
-      ? cleanedPath
-      : `/${cleanedPath}`
-
-  return `${backendBaseUrl}${normalizedPath}`
+    coverImageUrl.value =
+      URL.createObjectURL(blob)
+  } catch (error) {
+    console.error(
+      '대표 이미지를 불러오지 못했습니다.',
+      error,
+    )
+  }
 }
+
+watch(
+  () => [
+    props.trip.id,
+    props.trip.coverImagePath,
+  ],
+  () => {
+    void loadCoverImage()
+  },
+  {
+    immediate: true,
+  },
+)
+
+onBeforeUnmount(() => {
+  revokeCoverImageUrl()
+})
 
 const goToTripDetail = (tripId: number) => {
   void router.push({
@@ -104,8 +138,8 @@ const goToTripDetail = (tripId: number) => {
       :class="getThumbnailClass(trip.id)"
     >
       <img
-        v-if="trip.coverImagePath"
-        :src="getCoverImageUrl(trip.coverImagePath)"
+        v-if="trip.coverImagePath && coverImageUrl"
+        :src="coverImageUrl"
         :alt="`${trip.title} 대표 이미지`"
       />
 

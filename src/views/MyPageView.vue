@@ -1,29 +1,47 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-
-import ProfileCard from '@/components/mypage/ProfileCard.vue'
-import TripSummary from '@/components/mypage/TripSummary.vue'
-import SettingsMenu from '@/components/mypage/SettingsMenu.vue'
-import ProfileEditModal from '@/components/mypage/ProfileEditModal.vue'
-import PasswordChangeModal from '@/components/mypage/PasswordChangeModal.vue'
-import AccountManagementModal from '@/components/mypage/AccountManagementModal.vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 
 import {
   getCurrentMember,
   getStoredMember,
   type Member,
 } from '@/api/auth'
-
+import { apiBlobRequest } from '@/api/http'
 import {
   getTripSummary,
   type TripSummary as TripSummaryData,
 } from '@/api/trips'
 
-/* =========================
-   현재 로그인 회원
-========================= */
+import AccountManagementModal from '@/components/mypage/AccountManagementModal.vue'
+import PasswordChangeModal from '@/components/mypage/PasswordChangeModal.vue'
+import ProfileCard from '@/components/mypage/ProfileCard.vue'
+import ProfileEditModal from '@/components/mypage/ProfileEditModal.vue'
+import SettingsMenu from '@/components/mypage/SettingsMenu.vue'
+import TripSummary from '@/components/mypage/TripSummary.vue'
 
-const currentMember = ref<Member | null>(getStoredMember())
+const currentMember = ref<Member | null>(
+  getStoredMember(),
+)
+
+const profileImageUrl = ref<string | null>(
+  null,
+)
+
+const tripSummary = ref<TripSummaryData>({
+  totalCount: 0,
+  ownedCount: 0,
+  participatingCount: 0,
+})
+
+const isProfileModalOpen = ref(false)
+const isPasswordModalOpen = ref(false)
+const isAccountModalOpen = ref(false)
 
 const profileInitial = computed(() => {
   const name = currentMember.value?.name.trim()
@@ -35,33 +53,85 @@ const profileInitial = computed(() => {
   return name.charAt(0)
 })
 
-/* =========================
-   여행 통계
-========================= */
+const revokeProfileImageUrl = () => {
+  if (
+    profileImageUrl.value?.startsWith('blob:')
+  ) {
+    URL.revokeObjectURL(
+      profileImageUrl.value,
+    )
+  }
 
-const tripSummary = ref<TripSummaryData>({
-  totalCount: 0,
-  ownedCount: 0,
-  participatingCount: 0,
-})
+  profileImageUrl.value = null
+}
 
-const loadTripSummary = async () => {
+const loadProfileImage = async () => {
+  revokeProfileImageUrl()
+
+  const member = currentMember.value
+
+  if (
+    !member
+    || !member.profileImagePath
+  ) {
+    return
+  }
+
+  if (
+    member.profileImagePath.startsWith('http://')
+    || member.profileImagePath.startsWith('https://')
+  ) {
+    profileImageUrl.value =
+      member.profileImagePath
+
+    return
+  }
+
   try {
-    tripSummary.value = await getTripSummary()
+    const blob = await apiBlobRequest(
+      `/api/members/${member.id}/profile-image/file`,
+    )
+
+    profileImageUrl.value =
+      URL.createObjectURL(blob)
   } catch (error) {
-    console.error('여행 통계를 불러오지 못했습니다.', error)
+    console.error(
+      '프로필 이미지를 불러오지 못했습니다.',
+      error,
+    )
   }
 }
 
-/* =========================
-   프로필 수정 모달
-========================= */
+const loadCurrentMember = async () => {
+  try {
+    currentMember.value =
+      await getCurrentMember()
+  } catch (error) {
+    console.error(
+      '회원 정보를 불러오지 못했습니다.',
+      error,
+    )
+  }
+}
 
-const isProfileModalOpen = ref(false)
+const loadTripSummary = async () => {
+  try {
+    tripSummary.value =
+      await getTripSummary()
+  } catch (error) {
+    console.error(
+      '여행 통계를 불러오지 못했습니다.',
+      error,
+    )
+  }
+}
 
 const openProfileModal = () => {
   if (!currentMember.value) {
-    window.alert('회원 정보를 불러오지 못했습니다.')
+    window.alert(
+      '회원 정보를 불러오지 못했습니다.',
+    )
+
     return
   }
 
@@ -72,66 +142,31 @@ const closeProfileModal = () => {
   isProfileModalOpen.value = false
 }
 
-const handleProfileUpdated = (updatedMember: Member) => {
+const handleProfileUpdated = (
+  updatedMember: Member,
+) => {
   currentMember.value = updatedMember
 }
 
-/* =========================
-   백엔드 이미지 주소
-========================= */
+const openPasswordModal = () => {
+  isPasswordModalOpen.value = true
+}
 
-const backendBaseUrl = (() => {
-  const configuredUrl = import.meta.env.VITE_API_BASE_URL as
-    | string
-    | undefined
+const closePasswordModal = () => {
+  isPasswordModalOpen.value = false
+}
 
-  if (!configuredUrl || configuredUrl.startsWith('/')) {
-    return `${window.location.protocol}//${window.location.hostname}:8080`
-  }
+const openAccountModal = () => {
+  isAccountModalOpen.value = true
+}
 
-  return configuredUrl
-    .replace(/\/api\/?$/, '')
-    .replace(/\/$/, '')
-})()
+const closeAccountModal = () => {
+  isAccountModalOpen.value = false
+}
 
-const profileImageUrl = computed(() => {
-  const path = currentMember.value?.profileImagePath
-
-  if (!path) {
-    return null
-  }
-
-  if (
-    path.startsWith('http://')
-    || path.startsWith('https://')
-  ) {
-    return path
-  }
-
-  return `${backendBaseUrl}${
-    path.startsWith('/')
-      ? path
-      : `/${path}`
-  }`
-})
-
-/* =========================
-   비밀번호 변경
-========================= */
-
-const isPasswordModalOpen = ref(false)
-
-/* =========================
-   계정 관리
-========================= */
-
-const isAccountModalOpen = ref(false)
-
-/* =========================
-   설정 메뉴 클릭
-========================= */
-
-const handleMenuClick = (menuId: string) => {
+const handleMenuClick = (
+  menuId: string,
+) => {
   if (menuId === 'profile') {
     openProfileModal()
     return
@@ -147,77 +182,55 @@ const handleMenuClick = (menuId: string) => {
   }
 }
 
-/* =========================
-   비밀번호 변경 모달
-========================= */
-
-const openPasswordModal = () => {
-  isPasswordModalOpen.value = true
-}
-
-const closePasswordModal = () => {
-  isPasswordModalOpen.value = false
-}
-
-/* =========================
-   계정 관리 모달
-========================= */
-
-const openAccountModal = () => {
-  isAccountModalOpen.value = true
-}
-
-const closeAccountModal = () => {
-  isAccountModalOpen.value = false
-}
-
-/* =========================
-   초기 데이터 조회
-========================= */
-
-const loadCurrentMember = async () => {
-  try {
-    currentMember.value = await getCurrentMember()
-  } catch (error) {
-    console.error('회원 정보를 불러오지 못했습니다.', error)
-  }
-}
+watch(
+  () => [
+    currentMember.value?.id,
+    currentMember.value?.profileImagePath,
+  ],
+  () => {
+    void loadProfileImage()
+  },
+  {
+    immediate: true,
+  },
+)
 
 onMounted(() => {
-  loadCurrentMember()
-  loadTripSummary()
+  void loadCurrentMember()
+  void loadTripSummary()
+})
+
+onBeforeUnmount(() => {
+  revokeProfileImageUrl()
 })
 </script>
 
 <template>
   <section class="mypage-page">
-    <!-- PC 화면 제목 -->
     <div class="desktop-page-heading">
       <p>MY PAGE</p>
       <h1>마이페이지</h1>
     </div>
 
     <div class="mypage-content">
-      <!-- 사용자 프로필 -->
       <ProfileCard
         :member="currentMember"
         :profile-initial="profileInitial"
         :profile-image-url="profileImageUrl"
       />
 
-      <!-- 여행 정보 -->
       <TripSummary
         :total-count="tripSummary.totalCount"
         :owned-count="tripSummary.ownedCount"
         :participating-count="tripSummary.participatingCount"
       />
 
-      <!-- 설정 -->
-      <SettingsMenu @select="handleMenuClick" />
+      <SettingsMenu
+        @select="handleMenuClick"
+      />
     </div>
   </section>
 
-  <!-- 프로필 수정 모달 -->
   <ProfileEditModal
     v-if="isProfileModalOpen && currentMember"
     :member="currentMember"
@@ -227,13 +240,11 @@ onMounted(() => {
     @updated="handleProfileUpdated"
   />
 
-  <!-- 비밀번호 변경 모달 -->
   <PasswordChangeModal
     v-if="isPasswordModalOpen"
     @close="closePasswordModal"
   />
 
-  <!-- 계정 관리 모달 -->
   <AccountManagementModal
     v-if="isAccountModalOpen"
     @close="closeAccountModal"
@@ -266,10 +277,6 @@ onMounted(() => {
 .mypage-content {
   width: 100%;
 }
-
-/* =========================
-   모바일
-========================= */
 
 @media (max-width: 760px) {
   .mypage-page {

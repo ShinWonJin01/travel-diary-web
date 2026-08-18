@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, } from 'vue'
 import { RouterLink } from 'vue-router'
+
+import { apiBlobRequest } from '@/api/http'
 
 import { getRecentActivities, type RecentActivity } from '@/api/home'
 import { getReceivedInvitations } from '@/api/invitations'
@@ -44,24 +46,43 @@ const recentTrips = ref<RecentTrip[]>([])
 const receivedInvitations = ref<ReceivedInvitation[]>([])
 const recentActivities = ref<RecentActivity[]>([])
 
-const backendBaseUrl = (() => {
-  const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined
+const revokeRecentTripCoverUrls = () => {
+  recentTrips.value.forEach((trip) => {
+    if (trip.coverImageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(trip.coverImageUrl)
+    }
+  })
+}
 
-  if (!configuredUrl || configuredUrl.startsWith('/')) {
-    return `${window.location.protocol}//${window.location.hostname}:8080`
+const loadCoverImageUrl = async (
+  tripId: number,
+  coverImagePath: string | null,
+) => {
+  if (!coverImagePath) {
+    return ''
   }
 
-  return configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')
-})()
+  if (
+    coverImagePath.startsWith('http://')
+    || coverImagePath.startsWith('https://')
+  ) {
+    return coverImagePath
+  }
 
-const getCoverImageUrl = (path: string | null) => {
-  if (!path) return ''
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  try {
+    const blob = await apiBlobRequest(
+      `/api/trips/${tripId}/cover-image/file`,
+    )
 
-  const cleanedPath = path.replaceAll('\\', '/')
-  const normalizedPath = cleanedPath.startsWith('/') ? cleanedPath : `/${cleanedPath}`
+    return URL.createObjectURL(blob)
+  } catch (error) {
+    console.error(
+      '최근 여행 대표 이미지를 불러오지 못했습니다.',
+      error,
+    )
 
-  return `${backendBaseUrl}${normalizedPath}`
+    return ''
+  }
 }
 
 const formatTripPeriod = (
@@ -83,15 +104,37 @@ const formatTripPeriod = (
 const loadRecentTrips = async () => {
   try {
     const trips = await getTrips()
+    const selectedTrips = trips.slice(0, 4)
 
-    recentTrips.value = trips.slice(0, 4).map((trip, index) => ({
-      id: trip.id,
-      title: trip.title,
-      period: formatTripPeriod(trip.startDate, trip.endDate),
-      theme: recentTripThemes[index % recentTripThemes.length] ?? 'trip-theme-blue',
-      coverImageUrl: getCoverImageUrl(trip.coverImagePath),
-    }))
+    const coverImageUrls = await Promise.all(
+      selectedTrips.map((trip) =>
+        loadCoverImageUrl(
+          trip.id,
+          trip.coverImagePath,
+        ),
+      ),
+    )
+
+    revokeRecentTripCoverUrls()
+
+    recentTrips.value = selectedTrips.map(
+      (trip, index) => ({
+        id: trip.id,
+        title: trip.title,
+        period: formatTripPeriod(
+          trip.startDate,
+          trip.endDate,
+        ),
+        theme:
+          recentTripThemes[
+            index % recentTripThemes.length
+          ] ?? 'trip-theme-blue',
+        coverImageUrl:
+          coverImageUrls[index] ?? '',
+      }),
+    )
   } catch {
+    revokeRecentTripCoverUrls()
     recentTrips.value = []
   }
 }
@@ -126,6 +169,10 @@ onMounted(() => {
   void loadRecentTrips()
   void loadReceivedInvitations()
   void loadRecentActivities()
+})
+
+onBeforeUnmount(() => {
+  revokeRecentTripCoverUrls()
 })
 </script>
 
