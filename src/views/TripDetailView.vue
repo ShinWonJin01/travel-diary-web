@@ -550,6 +550,7 @@ watch(
           :visible-participants="visibleParticipants"
           :remaining-participant-count="remainingParticipantCount"
           :timeline-groups="timelineGroups"
+          :map-photos="mapPhotos"
           :is-owner="isOwner"
           @edit="openTripEdit"
           @delete="handleDeleteTrip"

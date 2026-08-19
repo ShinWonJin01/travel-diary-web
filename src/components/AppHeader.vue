@@ -1,158 +1,55 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+
 import {
   getStoredMember,
   logout as clearStoredLogin,
   type Member,
 } from '@/api/auth'
 import { getTripDetail } from '@/api/trips'
-import {
-  getNotifications,
-  getUnreadNotificationCount,
-  markAllNotificationsAsRead,
-  markNotificationAsRead,
-  type Notification as ApiNotification,
-  type NotificationType as ApiNotificationType,
-} from '@/api/notifications'
+import useNotifications from '@/composables/notifications/useNotifications'
 
-type NotificationCategory = 'invitation' | 'trip-change' | 'activity' | 'trip-deleted'
-
-interface NotificationItem {
-  id: number
-  type: NotificationCategory
-  message: string
-  time: string
-  isRead: boolean
-  to: string
-}
+import AppNotificationPopup from './layout/AppNotificationPopup.vue'
+import MobileBottomNavigation from './layout/MobileBottomNavigation.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-const currentMember = ref<Member | null>(
-  getStoredMember(),
-)
+const currentMember = ref<Member | null>(getStoredMember())
+const tripDetailTitle = ref('여행 상세')
 
-const memberNickname = computed(() => {
-  return currentMember.value?.nickname ?? '마이페이지'
-})
+const {
+  isNotificationOpen,
+  notifications,
+  unreadCount,
+  loadUnreadCount,
+  toggleNotificationPopup,
+  closeNotificationPopup,
+  markAllAsRead,
+  openNotification,
+} = useNotifications(currentMember)
+
+const memberNickname = computed(
+  () => currentMember.value?.nickname ?? '마이페이지',
+)
 
 const isHomePage = computed(() => route.name === 'home')
 const isTripsPage = computed(() => route.name === 'trips')
 const isTripDetailPage = computed(() => route.name === 'trip-detail')
 
-const tripDetailTitle = ref('여행 상세')
-
-const isNotificationOpen = ref(false)
-
-const notifications = ref<NotificationItem[]>([])
-
-const getNotificationCategory = (
-  type: ApiNotificationType,
-): NotificationCategory => {
-  switch (type) {
-    case 'TRIP_INVITED':
-    case 'INVITATION_ACCEPTED':
-    case 'INVITATION_REJECTED':
-      return 'invitation'
-
-    case 'TRIP_UPDATED':
-      return 'trip-change'
-
-    case 'MEMBER_LEFT_TRIP':
-      return 'activity'
-    
-    case 'TRIP_DELETED':
-      return 'trip-deleted'
-  }
-}
-
-const getNotificationLink = (notification: ApiNotification) => {
-  if (notification.type === 'TRIP_INVITED') {
-    return '/invitations'
-  }
-
-  if (notification.tripId !== null) {
-    return `/trips/${notification.tripId}`
-  }
-
-  return '/trips'
-}
-
-const formatNotificationTime = (createdAt: string) => {
-  const createdTime = new Date(createdAt).getTime()
-  const diff = Date.now() - createdTime
-
-  if (Number.isNaN(createdTime)) return ''
-
-  const minute = 60 * 1000
-  const hour = 60 * minute
-  const day = 24 * hour
-
-  if (diff < minute) return '방금 전'
-  if (diff < hour) return `${Math.floor(diff / minute)}분 전`
-  if (diff < day) return `${Math.floor(diff / hour)}시간 전`
-  if (diff < 7 * day) return `${Math.floor(diff / day)}일 전`
-
-  return new Date(createdAt).toLocaleDateString('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-  })
-}
-
-const loadNotifications = async () => {
-  try {
-    const response = await getNotifications()
-
-    notifications.value = response.map((notification) => ({
-      id: notification.id,
-      type: getNotificationCategory(notification.type),
-      message: notification.message,
-      time: formatNotificationTime(notification.createdAt),
-      isRead: notification.read,
-      to: getNotificationLink(notification),
-    }))
-
-    unreadCount.value =
-      notifications.value.filter((notification) => !notification.isRead).length
-  } catch {
-    notifications.value = []
-  }
-}
-
-const unreadCount = ref(0)
-
-const loadUnreadCount = async () => {
-  if (!currentMember.value) {
-    unreadCount.value = 0
-    return
-  }
-
-  try {
-    unreadCount.value = await getUnreadNotificationCount()
-  } catch {
-    unreadCount.value = 0
-  }
-}
-
 const mobileTitle = computed(() => {
   switch (route.name) {
     case 'trips':
       return '여행 기록'
-
     case 'invitations':
       return '초대 관리'
-
     case 'mypage':
       return '마이페이지'
-
     case 'trip-create':
       return '여행 만들기'
-
     case 'trip-detail':
       return tripDetailTitle.value
-
     default:
       return '공동 여행기록장'
   }
@@ -183,79 +80,18 @@ const loadTripDetailTitle = async () => {
   }
 }
 
-const getNotificationTypeLabel = (type: NotificationCategory) => {
-  switch (type) {
-    case 'invitation':
-      return '초대'
-
-    case 'trip-change':
-      return '여행 변경'
-
-    case 'activity':
-      return '참여자 활동'
-    
-    case 'trip-deleted':
-      return '여행 삭제'
-  }
-}
-
-const toggleNotificationPopup = async () => {
-  isNotificationOpen.value = !isNotificationOpen.value
-
-  if (isNotificationOpen.value) {
-    await loadNotifications()
-  }
-}
-
 const closeNotificationOnOutsideClick = (event: MouseEvent) => {
   const target = event.target
 
-  if (!(target instanceof Element)) {
-    return
-  }
+  if (!(target instanceof Element)) return
 
   const clickedInsideNotification = target.closest(
     '.notification-wrapper, .mobile-notification-wrapper',
   )
 
-  if (clickedInsideNotification) {
-    return
+  if (!clickedInsideNotification) {
+    closeNotificationPopup()
   }
-
-  isNotificationOpen.value = false
-}
-
-const markAllAsRead = async () => {
-  if (unreadCount.value === 0) return
-
-  try {
-    await markAllNotificationsAsRead()
-
-    notifications.value.forEach((notification) => {
-      notification.isRead = true
-    })
-
-    unreadCount.value = 0
-  } catch {
-    await loadNotifications()
-    await loadUnreadCount()
-  }
-}
-
-const openNotification = async (notification: NotificationItem) => {
-  if (!notification.isRead) {
-    try {
-      await markNotificationAsRead(notification.id)
-
-      notification.isRead = true
-      unreadCount.value = Math.max(unreadCount.value - 1, 0)
-    } catch {
-      // 읽음 처리 실패 시에도 관련 화면 이동은 허용
-    }
-  }
-
-  isNotificationOpen.value = false
-  await router.push(notification.to)
 }
 
 const goBack = () => {
@@ -273,9 +109,8 @@ const goToCreateTrip = () => {
 
 const handleLogout = async () => {
   clearStoredLogin()
-
   currentMember.value = null
-  isNotificationOpen.value = false
+  closeNotificationPopup()
 
   await router.replace('/login')
 }
@@ -283,7 +118,7 @@ const handleLogout = async () => {
 watch(
   () => route.fullPath,
   () => {
-    isNotificationOpen.value = false
+    closeNotificationPopup()
     void loadUnreadCount()
   },
 )
@@ -293,9 +128,7 @@ watch(
   () => {
     void loadTripDetailTitle()
   },
-  {
-    immediate: true,
-  },
+  { immediate: true },
 )
 
 onMounted(() => {
@@ -316,7 +149,6 @@ onBeforeUnmount(() => {
         <span></span>
         <span></span>
       </span>
-
       <strong>공동 여행기록장</strong>
     </RouterLink>
 
@@ -327,7 +159,6 @@ onBeforeUnmount(() => {
     </nav>
 
     <div class="desktop-actions">
-      <!-- PC 알림 -->
       <div class="notification-wrapper">
         <button
           class="notification-button"
@@ -345,65 +176,21 @@ onBeforeUnmount(() => {
           </span>
         </button>
 
-        <div v-if="isNotificationOpen" class="notification-popup">
-          <div class="notification-popup-header">
-            <div>
-              <h2>알림</h2>
-              <p>읽지 않은 알림 {{ unreadCount }}개</p>
-            </div>
-
-            <button type="button" :disabled="unreadCount === 0" @click="markAllAsRead">
-              모두 읽음
-            </button>
-          </div>
-
-          <div v-if="notifications.length > 0" class="notification-list">
-            <button
-              v-for="notification in notifications"
-              :key="notification.id"
-              class="notification-item"
-              :class="{ unread: !notification.isRead }"
-              type="button"
-              @click="openNotification(notification)"
-            >
-              <span class="notification-unread-dot" :class="{ hidden: notification.isRead }"></span>
-
-              <span class="notification-information">
-                <span class="notification-type" :class="notification.type">
-                  {{ getNotificationTypeLabel(notification.type) }}
-                </span>
-
-                <strong>
-                  {{ notification.message }}
-                </strong>
-
-                <span class="notification-meta">
-                  {{ notification.time }}
-                </span>
-              </span>
-            </button>
-          </div>
-
-          <div v-else class="empty-notification">
-            <p>새로운 알림이 없습니다.</p>
-          </div>
-        </div>
+        <AppNotificationPopup
+          v-if="isNotificationOpen"
+          :notifications="notifications"
+          :unread-count="unreadCount"
+          @mark-all-read="markAllAsRead"
+          @open="openNotification"
+        />
       </div>
 
       <div class="account-actions">
-        <RouterLink
-          class="mypage-button"
-          to="/mypage"
-          :title="memberNickname"
-        >
+        <RouterLink class="mypage-button" to="/mypage" :title="memberNickname">
           {{ memberNickname }}
         </RouterLink>
 
-        <button
-          class="logout-button"
-          type="button"
-          @click="handleLogout"
-        >
+        <button class="logout-button" type="button" @click="handleLogout">
           로그아웃
         </button>
       </div>
@@ -415,7 +202,6 @@ onBeforeUnmount(() => {
     class="mobile-header"
     :class="{ 'trip-detail-header': isTripDetailPage }"
   >
-    <!-- 홈: 삼단바 -->
     <button
       v-if="isHomePage"
       class="mobile-header-button"
@@ -427,7 +213,6 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
-    <!-- 홈 이외 화면: 뒤로가기 -->
     <button
       v-else
       class="mobile-header-button"
@@ -444,7 +229,6 @@ onBeforeUnmount(() => {
       {{ mobileTitle }}
     </strong>
 
-    <!-- 모바일 홈 알림 -->
     <div v-if="isHomePage" class="mobile-notification-wrapper">
       <button
         class="mobile-notification"
@@ -462,52 +246,16 @@ onBeforeUnmount(() => {
         </span>
       </button>
 
-      <div v-if="isNotificationOpen" class="notification-popup">
-        <div class="notification-popup-header">
-          <div>
-            <h2>알림</h2>
-            <p>읽지 않은 알림 {{ unreadCount }}개</p>
-          </div>
-
-          <button type="button" :disabled="unreadCount === 0" @click="markAllAsRead">
-            모두 읽음
-          </button>
-        </div>
-
-        <div v-if="notifications.length > 0" class="notification-list">
-          <button
-            v-for="notification in notifications"
-            :key="notification.id"
-            class="notification-item"
-            :class="{ unread: !notification.isRead }"
-            type="button"
-            @click="openNotification(notification)"
-          >
-            <span class="notification-unread-dot" :class="{ hidden: notification.isRead }"></span>
-
-            <span class="notification-information">
-              <span class="notification-type" :class="notification.type">
-                {{ getNotificationTypeLabel(notification.type) }}
-              </span>
-
-              <strong>
-                {{ notification.message }}
-              </strong>
-
-              <span class="notification-meta">
-                {{ notification.time }}
-              </span>
-            </span>
-          </button>
-        </div>
-
-        <div v-else class="empty-notification">
-          <p>새로운 알림이 없습니다.</p>
-        </div>
-      </div>
+      <AppNotificationPopup
+        v-if="isNotificationOpen"
+        mobile
+        :notifications="notifications"
+        :unread-count="unreadCount"
+        @mark-all-read="markAllAsRead"
+        @open="openNotification"
+      />
     </div>
 
-    <!-- 여행 기록: 여행 추가 -->
     <button
       v-else-if="isTripsPage"
       class="mobile-header-button"
@@ -523,46 +271,7 @@ onBeforeUnmount(() => {
     <span v-else class="mobile-header-side"></span>
   </header>
 
-  <!-- 모바일 하단 메뉴 -->
-  <nav
-    v-if="!isTripDetailPage"
-    class="mobile-bottom-navigation"
-  >
-    <RouterLink to="/">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="m3 11 9-8 9 8v10h-6v-6H9v6H3z" />
-      </svg>
-
-      <span>홈</span>
-    </RouterLink>
-
-    <RouterLink to="/trips">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 6h16v14H4zM8 6V4h8v2" />
-      </svg>
-
-      <span>여행 기록</span>
-    </RouterLink>
-
-    <RouterLink to="/invitations">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="9" cy="8" r="3" />
-        <circle cx="17" cy="9" r="2" />
-        <path d="M3 20c0-4 2-6 6-6s6 2 6 6M15 15c4 0 6 2 6 5" />
-      </svg>
-
-      <span>초대 관리</span>
-    </RouterLink>
-
-    <RouterLink to="/mypage">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21c0-5 3-8 8-8s8 3 8 8" />
-      </svg>
-
-      <span>마이페이지</span>
-    </RouterLink>
-  </nav>
+  <MobileBottomNavigation v-if="!isTripDetailPage" />
 </template>
 
 <style scoped>
@@ -654,23 +363,6 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.logout-button {
-  height: 42px;
-  padding: 0 16px;
-  border: 1px solid #d7e0ea;
-  border-radius: 24px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #536477;
-  background: #ffffff;
-  cursor: pointer;
-}
-
-.logout-button:hover {
-  border-color: #b8c5d4;
-  background: #f6f8fb;
-}
-
 .mypage-button {
   display: flex;
   align-items: center;
@@ -688,8 +380,25 @@ onBeforeUnmount(() => {
   background: #4e6688;
 }
 
+.logout-button {
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #d7e0ea;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #536477;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  border-color: #b8c5d4;
+  background: #f6f8fb;
+}
+
 /* =========================
-   알림
+   알림 버튼
 ========================= */
 .notification-wrapper,
 .mobile-notification-wrapper {
@@ -700,9 +409,9 @@ onBeforeUnmount(() => {
 .mobile-notification {
   position: relative;
   display: grid;
-  place-items: center;
   width: 28px;
   height: 28px;
+  place-items: center;
   padding: 0;
   border: 0;
   color: #27364a;
@@ -739,167 +448,8 @@ onBeforeUnmount(() => {
   background: #ff4058;
 }
 
-.notification-popup {
-  position: absolute;
-  top: calc(100% + 17px);
-  right: 0;
-  z-index: 300;
-  width: 370px;
-  overflow: hidden;
-  border: 1px solid #e2e7ed;
-  border-radius: 13px;
-  background: #ffffff;
-  box-shadow: 0 16px 45px rgba(31, 43, 61, 0.18);
-}
-
-.notification-popup-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 19px;
-  border-bottom: 1px solid #edf0f4;
-}
-
-.notification-popup-header h2 {
-  margin: 0;
-  font-size: 16px;
-  color: #252c36;
-}
-
-.notification-popup-header p {
-  margin: 5px 0 0;
-  font-size: 10px;
-  color: #949ca7;
-}
-
-.notification-popup-header > button {
-  padding: 5px;
-  border: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #4164e9;
-  background: transparent;
-  cursor: pointer;
-}
-
-.notification-popup-header > button:disabled {
-  color: #b6bcc4;
-  cursor: default;
-}
-
-.notification-list {
-  max-height: 390px;
-  overflow-y: auto;
-}
-
-.notification-item {
-  display: grid;
-  grid-template-columns: 9px minmax(0, 1fr);
-  gap: 10px;
-  width: 100%;
-  padding: 15px 18px;
-  border: 0;
-  border-bottom: 1px solid #f0f2f5;
-  text-align: left;
-  background: #ffffff;
-  cursor: pointer;
-}
-
-.notification-item:last-child {
-  border-bottom: 0;
-}
-
-.notification-item.unread {
-  background: #f8faff;
-}
-
-.notification-item:hover {
-  background: #f4f7fb;
-}
-
-.notification-unread-dot {
-  width: 7px;
-  height: 7px;
-  margin-top: 7px;
-  border-radius: 50%;
-  background: #3f67ef;
-}
-
-.notification-unread-dot.hidden {
-  visibility: hidden;
-}
-
-.notification-information {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.notification-type {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 7px;
-  border-radius: 5px;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.notification-type.invitation {
-  color: #315ce8;
-  background: #eaf0ff;
-}
-
-.notification-type.trip-change {
-  color: #8a6415;
-  background: #fff4d5;
-}
-
-.notification-type.activity {
-  color: #28745c;
-  background: #e7f7f0;
-}
-
-.notification-type.trip-deleted {
-  color: #c23b43;
-  background: #fdecee;
-}
-
-.notification-information strong {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #303741;
-}
-
-.notification-meta {
-  margin-top: 6px;
-  font-size: 10px;
-  color: #979fa9;
-}
-
-.notification-meta span {
-  margin: 0 4px;
-  color: #c1c6cd;
-}
-
-.empty-notification {
-  display: flex;
-  min-height: 170px;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-notification p {
-  margin: 0;
-  font-size: 12px;
-  color: #959da7;
-}
-
-/* PC에서는 모바일 요소 숨김 */
-.mobile-header,
-.mobile-bottom-navigation {
+/* PC에서는 모바일 헤더 숨김 */
+.mobile-header {
   display: none;
 }
 
@@ -926,15 +476,6 @@ onBeforeUnmount(() => {
     padding: 0 12px;
   }
 
-  .trip-detail-header .mobile-header-title {
-    font-size: 14px;
-  }
-
-  .mobile-more-button svg {
-    width: 19px;
-    height: 19px;
-  }
-
   .mobile-header-title {
     overflow: hidden;
     margin: 0;
@@ -946,12 +487,16 @@ onBeforeUnmount(() => {
     white-space: nowrap;
   }
 
+  .trip-detail-header .mobile-header-title {
+    font-size: 14px;
+  }
+
   .mobile-header-button {
     display: flex;
-    align-items: center;
-    justify-content: center;
     width: 24px;
     height: 24px;
+    align-items: center;
+    justify-content: center;
     padding: 0;
     border: 0;
     color: #27364a;
@@ -1004,94 +549,6 @@ onBeforeUnmount(() => {
     min-width: 16px;
     height: 16px;
     font-size: 7px;
-  }
-
-  .mobile-notification-wrapper .notification-popup {
-    position: fixed;
-    top: 66px;
-    right: 12px;
-    left: 12px;
-    width: auto;
-    max-height: calc(100vh - 150px);
-  }
-
-  .notification-popup-header {
-    padding: 15px 16px;
-  }
-
-  .notification-popup-header h2 {
-    font-size: 14px;
-  }
-
-  .notification-popup-header p {
-    font-size: 9px;
-  }
-
-  .notification-popup-header > button {
-    font-size: 10px;
-  }
-
-  .notification-list {
-    max-height: calc(100vh - 235px);
-  }
-
-  .notification-item {
-    padding: 13px 15px;
-  }
-
-  .notification-information strong {
-    font-size: 11px;
-  }
-
-  .notification-meta {
-    font-size: 9px;
-  }
-
-  /* =========================
-     모바일 하단 내비게이션
-  ========================= */
-  .mobile-bottom-navigation {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 100;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    height: 68px;
-    padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid #e6ebf1;
-    background: #ffffff;
-  }
-
-  .mobile-bottom-navigation a {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    font-size: 10px;
-    color: #6b7582;
-  }
-
-  .mobile-bottom-navigation svg {
-    width: 20px;
-    height: 20px;
-    fill: none;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 1.7;
-  }
-
-  .mobile-bottom-navigation a.router-link-active {
-    font-weight: 700;
-    color: #2864ed;
-  }
-
-  .mobile-bottom-navigation a:first-child svg {
-    fill: currentColor;
   }
 }
 </style>

@@ -9,25 +9,29 @@ defineProps<{
 </script>
 
 <template>
-  <div class="map-card">
+  <section class="map-preview-card">
     <TripPhotoMap
       :photos="photos"
-      mode="full"
+      mode="preview"
     />
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.map-card {
+.map-preview-card {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
   overflow: hidden;
+  padding: 14px;
   border: 1px solid #e6eaf2;
   border-radius: 14px;
   background: #ffffff;
 }
 
 @media (max-width: 760px) {
-  .map-card {
-    margin: 10px 10px 0;
+  .map-preview-card {
+    padding: 7px;
     border-radius: 10px;
   }
 }
