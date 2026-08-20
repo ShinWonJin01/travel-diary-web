@@ -81,7 +81,10 @@ const emit = defineEmits<{
 .timeline-side-card {
   display: flex;
   min-width: 0;
+  height: 640px;
   flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
   padding: 18px 16px;
   border: 1px solid #e6eaf2;
   border-radius: 14px;
@@ -117,8 +120,34 @@ const emit = defineEmits<{
 .timeline-group-list {
   display: flex;
   min-width: 0;
+  min-height: 0;
+  flex: 1;
   flex-direction: column;
   gap: 22px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.timeline-group-list {
+  scrollbar-width: thin;
+  scrollbar-color: #c7cfdb transparent;
+}
+
+.timeline-group-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.timeline-group-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timeline-group-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #c7cfdb;
+}
+
+.timeline-group-list::-webkit-scrollbar-thumb:hover {
+  background: #aeb8c7;
 }
 
 .timeline-group h3 {
@@ -246,6 +275,8 @@ const emit = defineEmits<{
     margin-top: 10px;
     padding: 12px 11px;
     border-radius: 10px;
+    height: auto;
+    overflow: visible;
   }
 
   .timeline-card-header {
@@ -266,7 +297,11 @@ const emit = defineEmits<{
   }
 
   .timeline-group-list {
+    min-height: auto;
+    flex: none;
     gap: 16px;
+    overflow-y: visible;
+    padding-right: 0;
   }
 
   .timeline-group h3 {
