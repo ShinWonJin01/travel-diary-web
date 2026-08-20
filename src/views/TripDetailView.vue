@@ -398,12 +398,14 @@ const handleUpdatePhotoLocation = async (
   photoId: number,
   latitude: number,
   longitude: number,
+  locationName: string | null,
 ) => {
   try {
     await updatePhotoLocation(
       photoId,
       latitude,
       longitude,
+      locationName,
     )
   } catch (error: unknown) {
     window.alert(

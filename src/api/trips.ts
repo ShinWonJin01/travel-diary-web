@@ -251,6 +251,7 @@ export async function updateTripPhotoLocation(
   photoId: number,
   latitude: number,
   longitude: number,
+  locationName: string | null,
 ): Promise<TripPhoto> {
   return apiRequest<TripPhoto>(
     `/api/trips/${tripId}/photos/${photoId}/location`,
@@ -259,6 +260,7 @@ export async function updateTripPhotoLocation(
       body: JSON.stringify({
         latitude,
         longitude,
+        locationName,
       }),
     },
   )

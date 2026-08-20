@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import PhotoDetailModal from './photos/PhotoDetailModal.vue'
 import TripPhotoCard from './photos/TripPhotoCard.vue'
 
@@ -12,7 +12,7 @@ const emit = defineEmits<{
   deletePhotos: [photoIds: number[]]
   updateMemo: [photoId: number, memo: string]
   updateTakenAt: [photoId: number, takenAt: string | null]
-  updateLocation: [photoId: number, latitude: number, longitude: number]
+  updateLocation: [photoId: number, latitude: number, longitude: number, locationName: string | null]
 }>()
 
 const selectedPhotoId = ref<number | null>(null)
@@ -33,11 +33,13 @@ const handlePhotoClick = (photo: PhotoItem) => {
     return
   }
 
+  menuPhotoId.value = null
   selectedPhotoId.value = photo.id
 }
 
 const closePhotoModal = () => {
   selectedPhotoId.value = null
+  menuPhotoId.value = null
 }
 
 const toggleSelectionMode = () => {
@@ -82,6 +84,18 @@ const deleteSelectedPhotos = () => {
 
 const menuPhotoId = ref<number | null>(null)
 
+const closePhotoMenu = () => {
+  menuPhotoId.value = null
+}
+
+onMounted(() => {
+  document.addEventListener('click', closePhotoMenu)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closePhotoMenu)
+})
+
 const togglePhotoMenu = (photoId: number) => {
   menuPhotoId.value = menuPhotoId.value === photoId ? null : photoId
 }
@@ -111,8 +125,15 @@ const handleModalLocationUpdate = (
   photoId: number,
   latitude: number,
   longitude: number,
+  locationName: string | null,
 ) => {
-  emit('updateLocation', photoId, latitude, longitude)
+  emit(
+    'updateLocation',
+    photoId,
+    latitude,
+    longitude,
+    locationName,
+  )
 }
 </script>
 

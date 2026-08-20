@@ -5,6 +5,7 @@ import {
   searchLocations,
   type LocationSearchResult,
 } from '@/api/geocoding'
+import { ApiError } from '@/api/http'
 
 const emit = defineEmits<{
   (e: 'select', location: LocationSearchResult): void
@@ -36,7 +37,22 @@ async function handleSearch() {
     console.error('장소 검색 실패:', error)
 
     searchResults.value = []
-    searchError.value = '장소 검색 중 오류가 발생했습니다.'
+
+    if (error instanceof ApiError) {
+      if (error.status === 401) {
+        searchError.value =
+          '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.'
+      } else if (error.status >= 500) {
+        searchError.value =
+          '장소 검색 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+      } else {
+        searchError.value =
+          '장소 검색에 실패했습니다. 다시 시도해 주세요.'
+      }
+    } else {
+      searchError.value =
+        '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+    }
   } finally {
     isSearching.value = false
   }
@@ -105,7 +121,16 @@ function selectLocation(location: LocationSearchResult) {
           type="button"
           @click="selectLocation(location)"
         >
-          {{ location.name }}
+          <strong class="location-search-result-name">
+            {{ location.name }}
+          </strong>
+
+          <span
+            v-if="location.address && location.address !== location.name"
+            class="location-search-result-address"
+          >
+            {{ location.address }}
+          </span>
         </button>
       </li>
     </ul>
@@ -164,14 +189,28 @@ function selectLocation(location: LocationSearchResult) {
 }
 
 .location-search-result {
+  display: flex;
   width: 100%;
+  flex-direction: column;
+  gap: 3px;
   padding: 10px 12px;
   border: 0;
   background: #fff;
   text-align: left;
-  font-size: 13px;
-  line-height: 1.5;
   cursor: pointer;
+}
+
+.location-search-result-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #303743;
+}
+
+.location-search-result-address {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8a92a0;
 }
 
 .location-search-result:hover {

@@ -28,7 +28,7 @@ const emit = defineEmits<{
   close: []
   updateMemo: [photoId: number, memo: string]
   updateTakenAt: [photoId: number, takenAt: string | null]
-  updateLocation: [photoId: number, latitude: number, longitude: number]
+  updateLocation: [photoId: number, latitude: number, longitude: number, locationName: string | null]
 }>()
 
 const editType = ref<EditType>(null)
@@ -36,6 +36,7 @@ const takenAtDraft = ref('')
 const memoDraft = ref('')
 const selectedLatitude = ref<number | null>(null)
 const selectedLongitude = ref<number | null>(null)
+const selectedLocationName = ref<string | null>(null)
 
 let locationMap: L.Map | null = null
 let locationMarker: L.CircleMarker | null = null
@@ -53,6 +54,7 @@ const resetEdit = () => {
   memoDraft.value = ''
   selectedLatitude.value = null
   selectedLongitude.value = null
+  selectedLocationName.value = null
 }
 
 const closeModal = () => {
@@ -101,6 +103,7 @@ const updateLocationMarker = (latitude: number, longitude: number) => {
 const handleLocationSearchSelect = (location: LocationSearchResult) => {
   selectedLatitude.value = location.latitude
   selectedLongitude.value = location.longitude
+  selectedLocationName.value = location.name
 
   if (!locationMap) return
 
@@ -143,6 +146,8 @@ const startLocationEdit = async () => {
   locationMap.on('click', (event) => {
     selectedLatitude.value = event.latlng.lat
     selectedLongitude.value = event.latlng.lng
+    selectedLocationName.value = null
+
     updateLocationMarker(event.latlng.lat, event.latlng.lng)
   })
 
@@ -160,6 +165,7 @@ const saveLocation = () => {
     props.photo.id,
     selectedLatitude.value,
     selectedLongitude.value,
+    selectedLocationName.value,
   )
 
   resetEdit()

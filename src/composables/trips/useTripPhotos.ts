@@ -341,6 +341,7 @@ export function useTripPhotos({
     photoId: number,
     latitude: number,
     longitude: number,
+    locationName: string | null,
   ) => {
     const id = tripId.value
 
@@ -354,6 +355,7 @@ export function useTripPhotos({
         photoId,
         latitude,
         longitude,
+        locationName,
       )
 
     replacePhoto(updatedPhoto)
