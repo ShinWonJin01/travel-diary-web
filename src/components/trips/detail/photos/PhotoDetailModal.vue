@@ -3,6 +3,9 @@ import { nextTick, onBeforeUnmount, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+import LocationSearch from '@/components/trips/LocationSearch.vue'
+import type { LocationSearchResult } from '@/api/geocoding'
+
 interface PhotoItem {
   id: number
   title: string
@@ -95,6 +98,21 @@ const updateLocationMarker = (latitude: number, longitude: number) => {
   }).addTo(locationMap)
 }
 
+const handleLocationSearchSelect = (location: LocationSearchResult) => {
+  selectedLatitude.value = location.latitude
+  selectedLongitude.value = location.longitude
+
+  if (!locationMap) return
+
+  const position: L.LatLngTuple = [
+    location.latitude,
+    location.longitude,
+  ]
+
+  locationMap.setView(position, 16)
+  updateLocationMarker(location.latitude, location.longitude)
+}
+
 const startLocationEdit = async () => {
   editType.value = 'location'
   selectedLatitude.value = props.photo.latitude
@@ -133,7 +151,7 @@ const startLocationEdit = async () => {
 
 const saveLocation = () => {
   if (selectedLatitude.value === null || selectedLongitude.value === null) {
-    window.alert('지도에서 위치를 선택해 주세요.')
+    window.alert('장소를 검색하거나 지도에서 위치를 선택해 주세요.')
     return
   }
 
@@ -175,6 +193,8 @@ onBeforeUnmount(destroyLocationMap)
         </div>
 
         <div v-else-if="editType === 'location'" class="photo-editor">
+          <LocationSearch @select="handleLocationSearchSelect" />
+
           <div id="photo-detail-location-map" class="photo-location-map"></div>
 
           <div class="editor-actions">
@@ -338,6 +358,7 @@ onBeforeUnmount(destroyLocationMap)
 
 .photo-location-map {
   height: 300px;
+  margin-top: 10px;
   overflow: hidden;
   border-radius: 10px;
   background: #eef2f6;
