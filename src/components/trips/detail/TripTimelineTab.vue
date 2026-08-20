@@ -25,7 +25,10 @@ defineProps<{
       <h2>타임라인</h2>
     </div>
 
-    <div class="timeline-group-list">
+    <div
+      v-if="timelineGroups.length"
+      class="timeline-group-list"
+    >
       <section
         v-for="group in timelineGroups"
         :key="group.dateLabel"
@@ -64,6 +67,27 @@ defineProps<{
           </div>
         </article>
       </section>
+    </div>
+
+    <div
+      v-else
+      class="timeline-empty"
+    >
+      <span class="timeline-empty-icon">
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      </span>
+
+      <p>아직 타임라인이 없습니다.</p>
+
+      <span class="timeline-empty-description">
+        사진의 촬영 시간이 등록되면 시간순으로 표시됩니다.
+      </span>
     </div>
   </section>
 </template>
@@ -189,6 +213,52 @@ defineProps<{
   object-fit: cover;
 }
 
+.timeline-empty {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px dashed #d9dee7;
+  border-radius: 12px;
+  color: #8c95a3;
+  background: #fafbfd;
+}
+
+.timeline-empty-icon {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3px;
+  border-radius: 50%;
+  color: #8794a3;
+  background: #eef2f6;
+}
+
+.timeline-empty-icon svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.timeline-empty p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #596270;
+}
+
+.timeline-empty-description {
+  font-size: 10px;
+}
+
 @media (max-width: 760px) {
   .panel-card {
     margin: 10px 10px 0;
@@ -263,6 +333,29 @@ defineProps<{
     width: 34px;
     height: 34px;
     border-radius: 6px;
+  }
+
+  .timeline-empty {
+    min-height: 170px;
+    border-radius: 8px;
+  }
+
+  .timeline-empty-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .timeline-empty-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .timeline-empty p {
+    font-size: 11px;
+  }
+
+  .timeline-empty-description {
+    font-size: 9px;
   }
 }
 </style>
