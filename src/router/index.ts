@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HomeView from '@/views/HomeView.vue'
+import { getAccessToken } from '@/api/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,33 +27,67 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+      meta: {
+        requiresAuth: true,
+      },
     },
     {
       path: '/trips',
       name: 'trips',
       component: () => import('@/views/TripsView.vue'),
+      meta: {
+        requiresAuth: true,
+      },
     },
     {
       path: '/trips/create',
       name: 'trip-create',
       component: () => import('@/views/TripCreateView.vue'),
+      meta: {
+        requiresAuth: true,
+      },
     },
     {
       path: '/trips/:id',
       name: 'trip-detail',
       component: () => import('@/views/TripDetailView.vue'),
+      meta: {
+        requiresAuth: true,
+      },
     },
     {
       path: '/invitations',
       name: 'invitations',
       component: () => import('@/views/TripInvitationsView.vue'),
+      meta: {
+        requiresAuth: true,
+      },
     },
     {
       path: '/mypage',
       name: 'mypage',
       component: () => import('@/views/MyPageView.vue'),
+      meta: {
+        requiresAuth: true,
+      },
     },
   ],
+})
+
+router.beforeEach((to) => {
+  const accessToken = getAccessToken()
+
+  if (to.meta.requiresAuth && !accessToken) {
+    return {
+      name: 'login',
+    }
+  }
+
+  if (to.meta.authPage && accessToken) {
+    return {
+      name: 'home',
+    }
+  }
 })
 
 export default router
