@@ -25,6 +25,7 @@ const isMapReady = ref(false)
 
 let map: L.Map | null = null
 let markerLayer: L.LayerGroup | null = null
+let activeMarker: L.Marker | null = null
 
 const formatTakenAt = (
   takenAt: string | null,
@@ -45,11 +46,23 @@ const formatTakenAt = (
 
 const createPhotoPopup = (
   photo: MapPhoto,
+  order: number,
 ) => {
   const popup =
     document.createElement('div')
 
   popup.className = 'map-photo-popup'
+
+  const orderBadge =
+    document.createElement('div')
+
+  orderBadge.className =
+    'map-photo-popup-order'
+
+  orderBadge.textContent =
+    `${order}번 마커`
+
+  popup.append(orderBadge)
 
   if (photo.imageUrl) {
     const image =
@@ -90,12 +103,27 @@ const createPhotoPopup = (
   return popup
 }
 
+const createPhotoMarkerIcon = (order: number) => {
+  return L.divIcon({
+    className: 'map-photo-marker-wrapper',
+    html: `
+      <div class="map-photo-marker">
+        <span>${order}</span>
+      </div>
+    `,
+    iconSize: [26, 33],
+    iconAnchor: [13, 33],
+    popupAnchor: [0, -31],
+  })
+}
+
 const updateMarkers = () => {
   if (!map || !markerLayer) {
     return
   }
 
   markerLayer.clearLayers()
+  activeMarker = null
 
   if (props.photos.length === 0) {
     map.setView([36.5, 127.8], 7)
@@ -131,27 +159,56 @@ const updateMarkers = () => {
         photo.longitude,
       ]
 
-      L.circleMarker(position, {
-        radius:
-          props.mode === 'preview'
-            ? 8
-            : 10,
-        weight: 2,
-        fillOpacity: 0.9,
+      const marker = L.marker(position, {
+        icon: createPhotoMarkerIcon(index + 1),
       })
-        .bindTooltip(
-          String(index + 1),
+        .bindPopup(
+          createPhotoPopup(
+            photo,
+            index + 1,
+          ),
           {
-            permanent: true,
-            direction: 'center',
-            className:
-              'map-photo-order',
+            closeButton: false,
+            autoClose: true,
+            closeOnClick: true,
           },
         )
-        .bindPopup(
-          createPhotoPopup(photo),
-        )
         .addTo(markerLayer!)
+
+      marker.on('click', () => {
+        if (
+          activeMarker
+          && activeMarker !== marker
+        ) {
+          activeMarker
+            .getElement()
+            ?.classList.remove(
+              'map-photo-marker-active',
+            )
+        }
+
+        activeMarker = marker
+
+        requestAnimationFrame(() => {
+          marker
+            .getElement()
+            ?.classList.add(
+              'map-photo-marker-active',
+            )
+        })
+      })
+
+      marker.on('popupclose', () => {
+        marker
+          .getElement()
+          ?.classList.remove(
+            'map-photo-marker-active',
+          )
+
+        if (activeMarker === marker) {
+          activeMarker = null
+        }
+      })
 
       bounds.push(position)
     },
@@ -206,6 +263,10 @@ onMounted(() => {
   })
 
   tileLayer.addTo(map)
+
+  map.on('click', () => {
+    map?.closePopup()
+  })
 
   markerLayer =
     L.layerGroup().addTo(map)
@@ -344,6 +405,53 @@ onBeforeUnmount(() => {
 
 .trip-photo-map :deep(.map-photo-order::before) {
   display: none;
+}
+
+.trip-photo-map :deep(.map-photo-marker-wrapper) {
+  border: 0;
+  background: transparent;
+}
+
+.trip-photo-map :deep(.map-photo-marker) {
+  position: relative;
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 50% 50% 50% 0;
+  color: #ffffff;
+  background: #3565f3;
+  box-shadow: 0 2px 6px rgba(20, 26, 36, 0.28);
+  transform: rotate(-45deg);
+}
+
+.trip-photo-map :deep(.map-photo-marker span) {
+  font-size: 10px;
+  font-weight: 500;
+  transform: rotate(45deg);
+}
+
+.trip-photo-map
+  :deep(
+    .map-photo-marker-wrapper.map-photo-marker-active
+    .map-photo-marker
+  ) {
+  box-shadow:
+    0 0 0 4px rgba(53, 101, 243, 0.2),
+    0 3px 8px rgba(20, 26, 36, 0.32);
+  transform: rotate(-45deg) scale(1.15);
+}
+
+.trip-photo-map :deep(.map-photo-popup-order) {
+  align-self: flex-start;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #3565f3;
+  background: #eef3ff;
 }
 
 @media (max-width: 760px) {
