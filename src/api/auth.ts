@@ -35,6 +35,25 @@ export interface DeleteAccountRequest {
   password: string
 }
 
+export interface PasswordResetRequest {
+  email: string
+}
+
+export interface PasswordResetVerifyRequest {
+  email: string
+  verificationCode: string
+}
+
+export interface PasswordResetConfirmRequest {
+  email: string
+  verificationCode: string
+  newPassword: string
+}
+
+interface ApiMessageResponse {
+  message: string
+}
+
 export interface LoginResponse {
   accessToken: string
   tokenType: string
@@ -87,6 +106,51 @@ export async function login(
   )
 
   return response
+}
+
+export async function requestPasswordReset(
+  request: PasswordResetRequest,
+): Promise<string> {
+  const response =
+    await apiRequest<ApiMessageResponse>(
+      '/api/auth/password-reset/request',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+    )
+
+  return response.message
+}
+
+export async function verifyPasswordResetCode(
+  request: PasswordResetVerifyRequest,
+): Promise<string> {
+  const response =
+    await apiRequest<ApiMessageResponse>(
+      '/api/auth/password-reset/verify',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+    )
+
+  return response.message
+}
+
+export async function confirmPasswordReset(
+  request: PasswordResetConfirmRequest,
+): Promise<string> {
+  const response =
+    await apiRequest<ApiMessageResponse>(
+      '/api/auth/password-reset/confirm',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+    )
+
+  return response.message
 }
 
 export async function getCurrentMember(): Promise<Member> {

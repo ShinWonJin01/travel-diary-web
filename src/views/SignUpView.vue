@@ -14,8 +14,6 @@ const password = ref('')
 const passwordConfirm = ref('')
 const showPassword = ref(false)
 const showPasswordConfirm = ref(false)
-const agreeTerms = ref(false)
-const agreePrivacy = ref(false)
 const formError = ref('')
 const isSubmitting = ref(false)
 
@@ -62,11 +60,6 @@ const handleSignUp = async () => {
 
   if (password.value !== passwordConfirm.value) {
     formError.value = '비밀번호가 서로 일치하지 않습니다.'
-    return
-  }
-
-  if (!agreeTerms.value || !agreePrivacy.value) {
-    formError.value = '필수 약관에 모두 동의해 주세요.'
     return
   }
 
@@ -202,40 +195,6 @@ const handleSignUp = async () => {
           </button>
         </div>
       </div>
-
-      <section class="auth-terms">
-        <strong>이용약관 동의</strong>
-
-        <div class="auth-term-row">
-          <label class="auth-checkbox">
-            <input v-model="agreeTerms" type="checkbox" />
-
-            <span>
-              <b>[필수]</b>
-              서비스 이용약관에 동의합니다.
-            </span>
-          </label>
-
-          <button type="button">
-            보기
-          </button>
-        </div>
-
-        <div class="auth-term-row">
-          <label class="auth-checkbox">
-            <input v-model="agreePrivacy" type="checkbox" />
-
-            <span>
-              <b>[필수]</b>
-              개인정보 수집 및 이용에 동의합니다.
-            </span>
-          </label>
-
-          <button type="button">
-            보기
-          </button>
-        </div>
-      </section>
 
       <p v-if="formError" class="auth-error">
         {{ formError }}

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HomeView from '@/views/HomeView.vue'
+
 import { getAccessToken } from '@/api/auth'
 
 const router = createRouter({
@@ -19,6 +20,14 @@ const router = createRouter({
       path: '/signup',
       name: 'signup',
       component: () => import('@/views/SignUpView.vue'),
+      meta: {
+        authPage: true,
+      },
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPasswordView.vue'),
       meta: {
         authPage: true,
       },

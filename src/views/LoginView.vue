@@ -19,6 +19,10 @@ const isRegistered = computed(() => {
   return route.query.registered === 'true'
 })
 
+const isPasswordReset = computed(() => {
+  return route.query.passwordReset === 'true'
+})
+
 const isValidEmail = (value: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
@@ -67,11 +71,6 @@ const handleLogin = async () => {
     isSubmitting.value = false
   }
 }
-
-const showPasswordNotice = () => {
-  formError.value =
-    '비밀번호 찾기는 회원 인증 API를 연결할 때 구현할 예정입니다.'
-}
 </script>
 
 <template>
@@ -81,6 +80,10 @@ const showPasswordNotice = () => {
   >
     <p v-if="isRegistered" class="auth-success">
       회원가입이 완료되었습니다. 로그인해 주세요.
+    </p>
+
+    <p v-if="isPasswordReset" class="auth-success">
+      비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.
     </p>
 
     <form class="auth-form" @submit.prevent="handleLogin">
@@ -124,13 +127,12 @@ const showPasswordNotice = () => {
           <span>로그인 상태 유지</span>
         </label>
 
-        <button
+        <RouterLink
           class="auth-text-button"
-          type="button"
-          @click="showPasswordNotice"
+          to="/forgot-password"
         >
           비밀번호를 잊으셨나요?
-        </button>
+        </RouterLink>
       </div>
 
       <p v-if="formError" class="auth-error">

@@ -8,7 +8,6 @@ defineProps<{
 <template>
   <main class="auth-page">
     <div class="auth-frame">
-      <!-- PC 왼쪽 서비스 소개 영역 -->
       <section class="auth-visual">
         <div class="auth-decoration decoration-one"></div>
         <div class="auth-decoration decoration-two"></div>
@@ -54,9 +53,7 @@ defineProps<{
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="9" cy="8" r="3" />
                   <circle cx="17" cy="9" r="2" />
-                  <path
-                    d="M3 20c0-4 2-6 6-6s6 2 6 6M15 15c4 0 6 2 6 5"
-                  />
+                  <path d="M3 20c0-4 2-6 6-6s6 2 6 6M15 15c4 0 6 2 6 5" />
                 </svg>
               </span>
 
@@ -80,16 +77,13 @@ defineProps<{
 
               <div>
                 <strong>AI 여행기</strong>
-                <span>
-                  여행 기록을 하나의 이야기로 정리합니다.
-                </span>
+                <span>여행 기록을 하나의 이야기로 정리합니다.</span>
               </div>
             </article>
           </div>
         </div>
       </section>
 
-      <!-- 로그인·회원가입 입력 영역 -->
       <section class="auth-panel">
         <div class="auth-card">
           <header class="auth-card-header">
@@ -97,7 +91,7 @@ defineProps<{
             <p>{{ description }}</p>
           </header>
 
-          <slot></slot>
+          <slot />
         </div>
       </section>
     </div>
@@ -122,10 +116,9 @@ defineProps<{
 .auth-frame {
   display: grid;
   width: min(1080px, 100%);
-  min-height: 680px;
-  grid-template-columns:
-    minmax(0, 0.95fr)
-    minmax(0, 1.05fr);
+  height: 680px;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid #e4e9f0;
   border-radius: 24px;
@@ -133,9 +126,6 @@ defineProps<{
   box-shadow: 0 28px 70px rgba(44, 61, 86, 0.13);
 }
 
-/* =========================
-   왼쪽 소개 영역
-========================= */
 .auth-visual {
   position: relative;
   overflow: hidden;
@@ -147,12 +137,8 @@ defineProps<{
       rgba(255, 255, 255, 0.2),
       transparent 25%
     ),
-    linear-gradient(
-      145deg,
-      #7696bd,
-      #425f85 58%,
-      #344d70
-    );
+    linear-gradient(145deg, #7696bd, #425f85 58%, #344d70);
+  min-height: 0;
 }
 
 .auth-visual::after {
@@ -197,7 +183,7 @@ defineProps<{
   position: relative;
   z-index: 2;
   display: flex;
-  min-height: 100%;
+  height: 100%;
   flex-direction: column;
 }
 
@@ -279,15 +265,13 @@ defineProps<{
   color: rgba(255, 255, 255, 0.66);
 }
 
-/* =========================
-   오른쪽 입력 영역
-========================= */
 .auth-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 55px 68px;
+  padding: 45px 68px;
   background: #ffffff;
+  min-height: 0;
 }
 
 .auth-card {
@@ -308,9 +292,6 @@ defineProps<{
   color: #8a939f;
 }
 
-/* =========================
-   로그인·회원가입 공통 폼
-========================= */
 .auth-form {
   margin-top: 31px;
 }
@@ -320,7 +301,6 @@ defineProps<{
   flex-direction: column;
 }
 
-/* auth-form 바로 아래에 세로로 배치된 입력칸에만 여백 적용 */
 .auth-form > .auth-field + .auth-field {
   margin-top: 18px;
 }
@@ -338,6 +318,11 @@ defineProps<{
 .auth-field-row + .auth-field,
 .auth-field + .auth-field-row,
 .auth-field-row + .auth-field-row {
+  margin-top: 18px;
+}
+
+.auth-success + .auth-field,
+.auth-error + .auth-field {
   margin-top: 18px;
 }
 
@@ -435,6 +420,7 @@ defineProps<{
   font-size: 10px;
   font-weight: 600;
   color: #446de8;
+  text-decoration: none;
   background: transparent;
   cursor: pointer;
 }
@@ -455,6 +441,12 @@ defineProps<{
 
 .auth-submit:hover {
   background: #355fe0;
+}
+
+.auth-submit:disabled,
+.auth-text-button:disabled {
+  cursor: default;
+  opacity: 0.65;
 }
 
 .auth-error,
@@ -487,51 +479,12 @@ defineProps<{
   margin-left: 5px;
   font-weight: 700;
   color: #416bea;
+  text-decoration: none;
 }
 
-.auth-terms {
-  display: grid;
-  gap: 11px;
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #e2e7ed;
-  border-radius: 9px;
-  background: #fafbfd;
-}
-
-.auth-terms strong {
-  font-size: 11px;
-  color: #505a68;
-}
-
-.auth-term-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.auth-term-row .auth-checkbox {
-  flex: 1;
-}
-
-.auth-term-row button {
-  flex: 0 0 auto;
-  padding: 0;
-  border: 0;
-  font-size: 9px;
-  color: #87919f;
-  text-decoration: underline;
-  background: transparent;
-  cursor: pointer;
-}
-
-/* =========================
-   태블릿
-========================= */
 @media (max-width: 900px) {
   .auth-panel {
-    padding: 50px 40px;
+    padding: 45px 40px;
   }
 
   .auth-visual {
@@ -543,9 +496,6 @@ defineProps<{
   }
 }
 
-/* =========================
-   모바일
-========================= */
 @media (max-width: 760px) {
   .auth-page {
     display: block;
@@ -556,6 +506,8 @@ defineProps<{
 
   .auth-frame {
     display: block;
+    width: 100%;
+    height: auto;
     min-height: calc(100vh - 58px);
     border: 0;
     border-radius: 0;
