@@ -28,6 +28,23 @@ import TripPhotosTab from '@/components/trips/detail/TripPhotosTab.vue'
 import TripTimelineTab from '@/components/trips/detail/TripTimelineTab.vue'
 
 type TripTab = 'overview' | 'timeline' | 'photos' | 'map' | 'ai-diary'
+type CurrentLocationResult =
+  | {
+      success: true
+      latitude: number
+      longitude: number
+    }
+  | {
+      success: false
+      reason:
+        | 'insecure'
+        | 'unsupported'
+        | 'permission-denied'
+        | 'unavailable'
+        | 'timeout'
+        | 'low-accuracy'
+      accuracy?: number
+    }
 
 const validTabs: TripTab[] = [
   'overview',
@@ -138,17 +155,9 @@ const {
   tripId,
 })
 
-const tripTitle = computed(
-  () => trip.value?.title ?? '여행 상세',
-)
-
-const tripDestination = computed(
-  () => trip.value?.destination ?? '',
-)
-
-const tripDescription = computed(
-  () => trip.value?.description.trim() ?? '',
-)
+const tripTitle = computed(() => trip.value?.title ?? '여행 상세')
+const tripDestination = computed(() => trip.value?.destination ?? '')
+const tripDescription = computed(() => trip.value?.description.trim() ?? '')
 
 const activeTab = computed<TripTab>(() => {
   const tab = route.query.tab
@@ -224,11 +233,9 @@ const tripDuration = computed(() => {
   }
 
   const millisecondsPerDay = 24 * 60 * 60 * 1000
-
   const nights = Math.max(
     Math.round(
-      (endTimestamp - startTimestamp)
-      / millisecondsPerDay,
+      (endTimestamp - startTimestamp) / millisecondsPerDay,
     ),
     0,
   )
@@ -261,15 +268,12 @@ const loadTrip = async () => {
   errorMessage.value = ''
 
   try {
-    const [
-      tripDetail,
-      participantItems,
-      photoItems,
-    ] = await Promise.all([
-      getTripDetail(id),
-      getTripParticipants(id),
-      getTripPhotos(id),
-    ])
+    const [tripDetail, participantItems, photoItems] =
+      await Promise.all([
+        getTripDetail(id),
+        getTripParticipants(id),
+        getTripPhotos(id),
+      ])
 
     trip.value = tripDetail
     tripParticipants.value = participantItems
@@ -316,7 +320,55 @@ const handlePhotoSelect = async (event: Event) => {
   const files = Array.from(input.files)
 
   try {
-    await uploadPhotos(files)
+    const uploadedPhotos = await uploadPhotos(files)
+
+    const photosWithoutLocation = uploadedPhotos.filter(
+      (photo) =>
+        photo.latitude === null
+        || photo.longitude === null,
+    )
+
+    if (photosWithoutLocation.length > 0) {
+      const useCurrentLocation = window.confirm(
+        photosWithoutLocation.length === 1
+          ? '사진에 위치 정보가 없습니다.\n현재 위치를 사용하시겠습니까?'
+          : `사진 ${photosWithoutLocation.length}장에 위치 정보가 없습니다.\n현재 위치를 사용하시겠습니까?`,
+      )
+
+      if (useCurrentLocation) {
+        const currentLocation = await getCurrentLocation()
+
+        if (currentLocation.success) {
+          for (const photo of photosWithoutLocation) {
+            await updatePhotoLocation(
+              photo.id,
+              currentLocation.latitude,
+              currentLocation.longitude,
+              null,
+            )
+          }
+        } else {
+          let message =
+            '현재 위치를 가져올 수 없습니다.\n사진은 위치 정보 없이 등록됩니다.'
+
+          if (currentLocation.reason === 'insecure') {
+            message =
+              '현재 개발 환경은 HTTP이므로 현재 위치를 사용할 수 없습니다.\nHTTPS 환경에서는 위치 기능을 사용할 수 있습니다.\n사진은 위치 정보 없이 등록됩니다.'
+          } else if (currentLocation.reason === 'permission-denied') {
+            message =
+              '위치 권한이 허용되지 않았습니다.\n브라우저의 위치 권한을 확인해 주세요.\n사진은 위치 정보 없이 등록됩니다.'
+          } else if (currentLocation.reason === 'low-accuracy') {
+            message =
+              `현재 위치의 정확도가 낮아 사용할 수 없습니다. (${Math.round(currentLocation.accuracy ?? 0)}m)\n사진은 위치 정보 없이 등록됩니다.`
+          } else if (currentLocation.reason === 'timeout') {
+            message =
+              '현재 위치를 확인하는 데 시간이 너무 오래 걸렸습니다.\n사진은 위치 정보 없이 등록됩니다.'
+          }
+
+          window.alert(message)
+        }
+      }
+    }
 
     selectTab('photos')
 
@@ -336,9 +388,78 @@ const handlePhotoSelect = async (event: Event) => {
   }
 }
 
-const handleDeletePhotos = async (
-  photoIds: number[],
-) => {
+const getCurrentLocation = () =>
+  new Promise<CurrentLocationResult>((resolve) => {
+    if (!window.isSecureContext) {
+      resolve({
+        success: false,
+        reason: 'insecure',
+      })
+      return
+    }
+
+    if (!navigator.geolocation) {
+      resolve({
+        success: false,
+        reason: 'unsupported',
+      })
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const {
+          latitude,
+          longitude,
+          accuracy,
+        } = position.coords
+
+        if (accuracy > 100) {
+          resolve({
+            success: false,
+            reason: 'low-accuracy',
+            accuracy,
+          })
+          return
+        }
+
+        resolve({
+          success: true,
+          latitude,
+          longitude,
+        })
+      },
+      (error) => {
+        if (error.code === 1) {
+          resolve({
+            success: false,
+            reason: 'permission-denied',
+          })
+          return
+        }
+
+        if (error.code === 2) {
+          resolve({
+            success: false,
+            reason: 'unavailable',
+          })
+          return
+        }
+
+        resolve({
+          success: false,
+          reason: 'timeout',
+        })
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    )
+  })
+
+const handleDeletePhotos = async (photoIds: number[]) => {
   if (photoIds.length === 0) {
     return
   }
@@ -489,14 +610,9 @@ watch(
 )
 
 watch(
-  () => [
-    tripId.value,
-    trip.value?.coverImagePath,
-  ],
+  () => [tripId.value, trip.value?.coverImagePath],
   () => {
-    void loadCoverImage(
-      trip.value?.coverImagePath,
-    )
+    void loadCoverImage(trip.value?.coverImagePath)
   },
 )
 </script>

@@ -239,21 +239,22 @@ export function useTripPhotos({
     const id = tripId.value
 
     if (id === null) {
-      return
+      return []
     }
+
+    const uploadedPhotos: TripPhoto[] = []
 
     for (const file of files) {
       const uploadedPhoto =
         await uploadTripPhoto(id, file)
 
-      tripPhotos.value.push(
-        uploadedPhoto,
-      )
+      tripPhotos.value.push(uploadedPhoto)
+      uploadedPhotos.push(uploadedPhoto)
 
-      await loadTripPhotoImageUrl(
-        uploadedPhoto,
-      )
+      await loadTripPhotoImageUrl(uploadedPhoto)
     }
+
+    return uploadedPhotos
   }
 
   const removePhotos = async (
