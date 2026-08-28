@@ -600,6 +600,7 @@ watch(
       :start-date="trip.startDate"
       :end-date="trip.endDate"
       :description="trip.description"
+      :cover-image-url="coverImageUrl"
       :is-saving="isSavingTrip"
       :error-message="tripEditErrorMessage"
       @close="closeTripEdit"

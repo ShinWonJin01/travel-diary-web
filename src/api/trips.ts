@@ -159,6 +159,17 @@ export async function uploadTripCoverImage(
   )
 }
 
+export async function deleteTripCoverImage(
+  tripId: number,
+): Promise<Trip> {
+  return apiRequest<Trip>(
+    `/api/trips/${tripId}/cover-image`,
+    {
+      method: 'DELETE',
+    },
+  )
+}
+
 export async function uploadTripPhoto(
   tripId: number,
   file: File,

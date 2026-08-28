@@ -7,8 +7,10 @@ import {
 import { ApiError } from '@/api/http'
 import {
   deleteTrip,
+  deleteTripCoverImage,
   leaveTrip,
   updateTrip,
+  uploadTripCoverImage,
   type Trip,
 } from '@/api/trips'
 
@@ -18,6 +20,8 @@ interface TripEditForm {
   startDate: string
   endDate: string
   description: string
+  coverImageFile: File | null
+  removeCoverImage: boolean
 }
 
 interface UseTripManagementOptions {
@@ -87,7 +91,7 @@ export function useTripManagement({
     tripEditErrorMessage.value = ''
 
     try {
-      trip.value = await updateTrip(id, {
+      let updatedTrip = await updateTrip(id, {
         title: form.title,
         destination: form.destination,
         startDate: form.startDate,
@@ -95,6 +99,16 @@ export function useTripManagement({
         description: form.description,
       })
 
+      if (form.coverImageFile) {
+        updatedTrip = await uploadTripCoverImage(
+          id,
+          form.coverImageFile,
+        )
+      } else if (form.removeCoverImage) {
+        updatedTrip = await deleteTripCoverImage(id)
+      }
+
+      trip.value = updatedTrip
       isTripEditModalOpen.value = false
     } catch (error: unknown) {
       tripEditErrorMessage.value =

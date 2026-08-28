@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 
 interface TripEditForm {
   title: string
@@ -7,6 +7,8 @@ interface TripEditForm {
   startDate: string
   endDate: string
   description: string
+  coverImageFile: File | null
+  removeCoverImage: boolean
 }
 
 const props = defineProps<{
@@ -15,6 +17,7 @@ const props = defineProps<{
   startDate: string
   endDate: string | null
   description: string
+  coverImageUrl?: string | null
   isSaving: boolean
   errorMessage: string
 }>()
@@ -24,7 +27,7 @@ const emit = defineEmits<{
   save: [form: TripEditForm]
 }>()
 
-const form = reactive<TripEditForm>({
+const form = reactive({
   title: '',
   destination: '',
   startDate: '',
@@ -32,14 +35,22 @@ const form = reactive<TripEditForm>({
   description: '',
 })
 
+const fileInput = ref<HTMLInputElement | null>(null)
+const coverPreviewUrl = ref<string | null>(null)
+const coverImageFile = ref<File | null>(null)
+const removeCoverImage = ref(false)
+
+let objectUrl: string | null = null
+
+const clearObjectUrl = () => {
+  if (!objectUrl) return
+
+  URL.revokeObjectURL(objectUrl)
+  objectUrl = null
+}
+
 watch(
-  () => [
-    props.title,
-    props.destination,
-    props.startDate,
-    props.endDate,
-    props.description,
-  ],
+  () => [props.title, props.destination, props.startDate, props.endDate, props.description],
   () => {
     form.title = props.title
     form.destination = props.destination
@@ -50,6 +61,48 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => props.coverImageUrl,
+  () => {
+    clearObjectUrl()
+    coverImageFile.value = null
+    removeCoverImage.value = false
+    coverPreviewUrl.value = props.coverImageUrl ?? null
+  },
+  { immediate: true },
+)
+
+const openCoverImagePicker = () => {
+  fileInput.value?.click()
+}
+
+const handleCoverImageChange = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+
+  if (!file) return
+
+  clearObjectUrl()
+
+  objectUrl = URL.createObjectURL(file)
+  coverImageFile.value = file
+  coverPreviewUrl.value = objectUrl
+  removeCoverImage.value = false
+  input.value = ''
+}
+
+const handleRemoveCoverImage = () => {
+  clearObjectUrl()
+
+  coverImageFile.value = null
+  coverPreviewUrl.value = null
+  removeCoverImage.value = Boolean(props.coverImageUrl)
+
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
 const handleSave = () => {
   emit('save', {
     title: form.title.trim(),
@@ -57,8 +110,12 @@ const handleSave = () => {
     startDate: form.startDate,
     endDate: form.endDate,
     description: form.description.trim(),
+    coverImageFile: coverImageFile.value,
+    removeCoverImage: removeCoverImage.value,
   })
 }
+
+onBeforeUnmount(clearObjectUrl)
 </script>
 
 <template>
@@ -82,6 +139,57 @@ const handleSave = () => {
       </div>
 
       <form class="trip-edit-form" @submit.prevent="handleSave">
+        <div class="trip-edit-cover">
+          <span class="trip-edit-label">대표 사진</span>
+
+          <div class="trip-edit-cover-box">
+            <img
+              v-if="coverPreviewUrl"
+              :src="coverPreviewUrl"
+              alt="여행 대표 사진 미리보기"
+            />
+
+            <div v-else class="trip-edit-cover-empty">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <circle cx="8.5" cy="9" r="1.5" />
+                <path d="m4 17 5-5 4 4 2-2 5 4" />
+              </svg>
+              <p>등록된 대표 사진이 없습니다.</p>
+            </div>
+          </div>
+
+          <div class="trip-edit-cover-actions">
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              :disabled="isSaving"
+              hidden
+              @change="handleCoverImageChange"
+            />
+
+            <button
+              type="button"
+              class="trip-edit-cover-change"
+              :disabled="isSaving"
+              @click="openCoverImagePicker"
+            >
+              {{ coverPreviewUrl ? '사진 변경' : '사진 추가' }}
+            </button>
+
+            <button
+              v-if="coverPreviewUrl"
+              type="button"
+              class="trip-edit-cover-remove"
+              :disabled="isSaving"
+              @click="handleRemoveCoverImage"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+
         <label>
           <span>여행 제목</span>
           <input
@@ -107,20 +215,12 @@ const handleSave = () => {
         <div class="trip-edit-date-row">
           <label>
             <span>시작일</span>
-            <input
-              v-model="form.startDate"
-              type="date"
-              :disabled="isSaving"
-            />
+            <input v-model="form.startDate" type="date" :disabled="isSaving" />
           </label>
 
           <label>
             <span>종료일</span>
-            <input
-              v-model="form.endDate"
-              type="date"
-              :disabled="isSaving"
-            />
+            <input v-model="form.endDate" type="date" :disabled="isSaving" />
           </label>
         </div>
 
@@ -149,11 +249,7 @@ const handleSave = () => {
             취소
           </button>
 
-          <button
-            type="submit"
-            class="trip-edit-save"
-            :disabled="isSaving"
-          >
+          <button type="submit" class="trip-edit-save" :disabled="isSaving">
             {{ isSaving ? '저장 중...' : '저장' }}
           </button>
         </div>
@@ -228,7 +324,8 @@ const handleSave = () => {
   gap: 7px;
 }
 
-.trip-edit-form label > span {
+.trip-edit-form label > span,
+.trip-edit-label {
   font-size: 11px;
   font-weight: 700;
   color: #495362;
@@ -261,6 +358,76 @@ const handleSave = () => {
 .trip-edit-form textarea:focus {
   border-color: #5878e9;
   box-shadow: 0 0 0 3px rgba(88, 120, 233, 0.11);
+}
+
+/* 대표 사진 */
+.trip-edit-cover {
+  display: grid;
+  gap: 7px;
+}
+
+.trip-edit-cover-box {
+  height: 150px;
+  overflow: hidden;
+  border: 1px solid #dce2ea;
+  border-radius: 10px;
+  background: #f7f9fb;
+}
+
+.trip-edit-cover-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trip-edit-cover-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #98a3b2;
+}
+
+.trip-edit-cover-empty svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: #9ba8b8;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trip-edit-cover-empty p {
+  margin: 8px 0 0;
+  font-size: 10px;
+}
+
+.trip-edit-cover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.trip-edit-cover-actions button {
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.trip-edit-cover-change {
+  border: 1px solid #d9e1f8;
+  color: #4265dc;
+  background: #f6f8ff;
+}
+
+.trip-edit-cover-remove {
+  border: 1px solid #e5e8ed;
+  color: #737e8c;
+  background: #ffffff;
 }
 
 .trip-edit-date-row {
@@ -303,6 +470,7 @@ const handleSave = () => {
 }
 
 .trip-edit-actions button:disabled,
+.trip-edit-cover-actions button:disabled,
 .trip-edit-close:disabled {
   cursor: not-allowed;
   opacity: 0.65;
@@ -323,6 +491,10 @@ const handleSave = () => {
 
   .trip-edit-header h2 {
     font-size: 17px;
+  }
+
+  .trip-edit-cover-box {
+    height: 130px;
   }
 
   .trip-edit-date-row {
