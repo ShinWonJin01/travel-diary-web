@@ -167,6 +167,11 @@ function selectLocation(location: LocationSearchResult) {
   border: 1px solid #d7d7d7;
   border-radius: 8px;
   background: #fff;
+  color: #303743;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
   cursor: pointer;
 }
 
