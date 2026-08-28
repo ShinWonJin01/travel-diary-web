@@ -22,9 +22,7 @@ defineProps<{
       <RouterLink
         :to="{
           path: '/trips',
-          query: {
-            filter: 'all',
-          },
+          query: { filter: 'all' },
         }"
       >
         더보기
@@ -32,38 +30,50 @@ defineProps<{
       </RouterLink>
     </div>
 
-    <div class="recent-trip-list">
-      <RouterLink
-        v-for="trip in trips"
-        :key="trip.id"
-        class="recent-trip-card"
-        :to="`/trips/${trip.id}`"
-      >
-        <div
-          class="recent-trip-image"
-          :class="{ [trip.theme]: !trip.coverImageUrl }"
+    <div class="recent-trip-content">
+      <div v-if="trips.length > 0" class="recent-trip-list">
+        <RouterLink
+          v-for="trip in trips"
+          :key="trip.id"
+          class="recent-trip-card"
+          :to="`/trips/${trip.id}`"
         >
-          <img
-            v-if="trip.coverImageUrl"
-            :src="trip.coverImageUrl"
-            :alt="`${trip.title} 대표 이미지`"
-          />
-
-          <svg
-            v-else
-            viewBox="0 0 64 52"
-            aria-hidden="true"
+          <div
+            class="recent-trip-image"
+            :class="{ [trip.theme]: !trip.coverImageUrl }"
           >
-            <path d="M4 48 22 26l10 12 9-11 19 21z" />
-            <circle cx="45" cy="14" r="7" />
+            <img
+              v-if="trip.coverImageUrl"
+              :src="trip.coverImageUrl"
+              :alt="`${trip.title} 대표 이미지`"
+            />
+
+            <svg v-else viewBox="0 0 64 52" aria-hidden="true">
+              <path d="M4 48 22 26l10 12 9-11 19 21z" />
+              <circle cx="45" cy="14" r="7" />
+            </svg>
+          </div>
+
+          <div class="recent-trip-information">
+            <h2>{{ trip.title }}</h2>
+            <p>{{ trip.period }}</p>
+          </div>
+        </RouterLink>
+      </div>
+
+      <div v-else class="recent-trip-empty">
+        <div class="recent-trip-empty-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.5 7V5.8C8.5 4.8 9.3 4 10.3 4h3.4c1 0 1.8.8 1.8 1.8V7" />
+            <rect x="4" y="7" width="16" height="12" rx="2.5" />
+            <path d="M4 11h16" />
+            <path d="M9 11v2" />
+            <path d="M15 11v2" />
           </svg>
         </div>
 
-        <div class="recent-trip-information">
-          <h2>{{ trip.title }}</h2>
-          <p>{{ trip.period }}</p>
-        </div>
-      </RouterLink>
+        <p>아직 등록된 여행이 없습니다.</p>
+      </div>
     </div>
   </section>
 </template>
@@ -98,7 +108,7 @@ defineProps<{
 }
 
 /* 최근 여행 */
-.recent-trip-section {
+.recent-trip-content {
   padding: 24px 28px 22px;
   border-radius: 22px;
   background: #f6fafc;
@@ -178,6 +188,42 @@ defineProps<{
   color: #808894;
 }
 
+/* 빈 상태 */
+.recent-trip-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 130px;
+}
+
+.recent-trip-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: #edf2f6;
+}
+
+.recent-trip-empty-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: #91a0b2;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.recent-trip-empty p {
+  margin: 0;
+  font-size: 11px;
+  color: #98a4b3;
+}
+
 @media (max-width: 900px) {
   .recent-trip-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -205,7 +251,7 @@ defineProps<{
     font-size: 16px;
   }
 
-  .recent-trip-section {
+  .recent-trip-content {
     padding: 0;
     border-radius: 0;
     background: transparent;
@@ -255,6 +301,27 @@ defineProps<{
   .recent-trip-information p {
     margin-top: 4px;
     font-size: 8px;
+  }
+
+  .recent-trip-empty {
+    min-height: 110px;
+    border-radius: 12px;
+    background: #f6fafc;
+  }
+
+  .recent-trip-empty-icon {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 8px;
+  }
+
+  .recent-trip-empty-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .recent-trip-empty p {
+    font-size: 10px;
   }
 }
 </style>
