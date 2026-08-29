@@ -35,6 +35,16 @@ export interface DeleteAccountRequest {
   password: string
 }
 
+export interface MemberSettings {
+  invitationNotificationEnabled: boolean
+  activityNotificationEnabled: boolean
+}
+
+export interface UpdateMemberSettingsRequest {
+  invitationNotificationEnabled: boolean
+  activityNotificationEnabled: boolean
+}
+
 export interface PasswordResetRequest {
   email: string
 }
@@ -216,6 +226,27 @@ export async function resetProfileImage(): Promise<Member> {
   saveStoredMember(member)
 
   return member
+}
+
+export async function getMemberSettings(): Promise<MemberSettings> {
+  return apiRequest<MemberSettings>(
+    '/api/members/me/settings',
+    {
+      method: 'GET',
+    },
+  )
+}
+
+export async function updateMemberSettings(
+  request: UpdateMemberSettingsRequest,
+): Promise<MemberSettings> {
+  return apiRequest<MemberSettings>(
+    '/api/members/me/settings',
+    {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    },
+  )
 }
 
 export async function changePassword(

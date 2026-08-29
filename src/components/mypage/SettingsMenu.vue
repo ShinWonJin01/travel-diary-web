@@ -2,7 +2,6 @@
 type SettingsMenuId =
   | 'profile'
   | 'notifications'
-  | 'privacy'
   | 'password'
   | 'account'
 
@@ -26,11 +25,6 @@ const menuItems: SettingsMenuItem[] = [
     id: 'notifications',
     title: '알림 설정',
     description: '여행 초대와 활동 알림을 설정합니다.',
-  },
-  {
-    id: 'privacy',
-    title: '개인정보·위치 설정',
-    description: '개인정보와 사진 위치정보 사용 범위를 설정합니다.',
   },
   {
     id: 'password',
@@ -79,16 +73,6 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
             aria-hidden="true"
           >
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-          </svg>
-
-          <!-- 개인정보·위치 설정 -->
-          <svg
-            v-else-if="item.id === 'privacy'"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6z" />
-            <circle cx="12" cy="11" r="2" />
           </svg>
 
           <!-- 비밀번호 변경 -->

@@ -24,6 +24,7 @@ import ProfileCard from '@/components/mypage/ProfileCard.vue'
 import ProfileEditModal from '@/components/mypage/ProfileEditModal.vue'
 import SettingsMenu from '@/components/mypage/SettingsMenu.vue'
 import TripSummary from '@/components/mypage/TripSummary.vue'
+import NotificationSettingsModal from '@/components/mypage/NotificationSettingsModal.vue'
 
 const currentMember = ref<Member | null>(
   getStoredMember(),
@@ -42,6 +43,7 @@ const tripSummary = ref<TripSummaryData>({
 const isProfileModalOpen = ref(false)
 const isPasswordModalOpen = ref(false)
 const isAccountModalOpen = ref(false)
+const isNotificationSettingsModalOpen = ref(false)
 
 const profileInitial = computed(() => {
   const name = currentMember.value?.name.trim()
@@ -164,11 +166,24 @@ const closeAccountModal = () => {
   isAccountModalOpen.value = false
 }
 
+const openNotificationSettingsModal = () => {
+  isNotificationSettingsModalOpen.value = true
+}
+
+const closeNotificationSettingsModal = () => {
+  isNotificationSettingsModalOpen.value = false
+}
+
 const handleMenuClick = (
   menuId: string,
 ) => {
   if (menuId === 'profile') {
     openProfileModal()
+    return
+  }
+
+  if (menuId === 'notifications') {
+    openNotificationSettingsModal()
     return
   }
 
@@ -243,6 +258,11 @@ onBeforeUnmount(() => {
   <PasswordChangeModal
     v-if="isPasswordModalOpen"
     @close="closePasswordModal"
+  />
+
+  <NotificationSettingsModal
+    v-if="isNotificationSettingsModalOpen"
+    @close="closeNotificationSettingsModal"
   />
 
   <AccountManagementModal
