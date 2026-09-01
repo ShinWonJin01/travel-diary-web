@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import {
   getCurrentMember,
@@ -19,20 +13,15 @@ import {
 } from '@/api/trips'
 
 import AccountManagementModal from '@/components/mypage/AccountManagementModal.vue'
+import NotificationSettingsModal from '@/components/mypage/NotificationSettingsModal.vue'
 import PasswordChangeModal from '@/components/mypage/PasswordChangeModal.vue'
 import ProfileCard from '@/components/mypage/ProfileCard.vue'
 import ProfileEditModal from '@/components/mypage/ProfileEditModal.vue'
 import SettingsMenu from '@/components/mypage/SettingsMenu.vue'
 import TripSummary from '@/components/mypage/TripSummary.vue'
-import NotificationSettingsModal from '@/components/mypage/NotificationSettingsModal.vue'
 
-const currentMember = ref<Member | null>(
-  getStoredMember(),
-)
-
-const profileImageUrl = ref<string | null>(
-  null,
-)
+const currentMember = ref<Member | null>(getStoredMember())
+const profileImageUrl = ref<string | null>(null)
 
 const tripSummary = ref<TripSummaryData>({
   totalCount: 0,
@@ -47,21 +36,12 @@ const isNotificationSettingsModalOpen = ref(false)
 
 const profileInitial = computed(() => {
   const name = currentMember.value?.name.trim()
-
-  if (!name) {
-    return '?'
-  }
-
-  return name.charAt(0)
+  return name ? name.charAt(0) : '?'
 })
 
 const revokeProfileImageUrl = () => {
-  if (
-    profileImageUrl.value?.startsWith('blob:')
-  ) {
-    URL.revokeObjectURL(
-      profileImageUrl.value,
-    )
+  if (profileImageUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(profileImageUrl.value)
   }
 
   profileImageUrl.value = null
@@ -71,21 +51,13 @@ const loadProfileImage = async () => {
   revokeProfileImageUrl()
 
   const member = currentMember.value
+  if (!member?.profileImagePath) return
 
   if (
-    !member
-    || !member.profileImagePath
+    member.profileImagePath.startsWith('http://') ||
+    member.profileImagePath.startsWith('https://')
   ) {
-    return
-  }
-
-  if (
-    member.profileImagePath.startsWith('http://')
-    || member.profileImagePath.startsWith('https://')
-  ) {
-    profileImageUrl.value =
-      member.profileImagePath
-
+    profileImageUrl.value = member.profileImagePath
     return
   }
 
@@ -94,46 +66,31 @@ const loadProfileImage = async () => {
       `/api/members/${member.id}/profile-image/file`,
     )
 
-    profileImageUrl.value =
-      URL.createObjectURL(blob)
+    profileImageUrl.value = URL.createObjectURL(blob)
   } catch (error) {
-    console.error(
-      '프로필 이미지를 불러오지 못했습니다.',
-      error,
-    )
+    console.error('프로필 이미지를 불러오지 못했습니다.', error)
   }
 }
 
 const loadCurrentMember = async () => {
   try {
-    currentMember.value =
-      await getCurrentMember()
+    currentMember.value = await getCurrentMember()
   } catch (error) {
-    console.error(
-      '회원 정보를 불러오지 못했습니다.',
-      error,
-    )
+    console.error('회원 정보를 불러오지 못했습니다.', error)
   }
 }
 
 const loadTripSummary = async () => {
   try {
-    tripSummary.value =
-      await getTripSummary()
+    tripSummary.value = await getTripSummary()
   } catch (error) {
-    console.error(
-      '여행 통계를 불러오지 못했습니다.',
-      error,
-    )
+    console.error('여행 통계를 불러오지 못했습니다.', error)
   }
 }
 
 const openProfileModal = () => {
   if (!currentMember.value) {
-    window.alert(
-      '회원 정보를 불러오지 못했습니다.',
-    )
-
+    window.alert('회원 정보를 불러오지 못했습니다.')
     return
   }
 
@@ -144,9 +101,7 @@ const closeProfileModal = () => {
   isProfileModalOpen.value = false
 }
 
-const handleProfileUpdated = (
-  updatedMember: Member,
-) => {
+const handleProfileUpdated = (updatedMember: Member) => {
   currentMember.value = updatedMember
 }
 
@@ -174,40 +129,32 @@ const closeNotificationSettingsModal = () => {
   isNotificationSettingsModalOpen.value = false
 }
 
-const handleMenuClick = (
-  menuId: string,
-) => {
-  if (menuId === 'profile') {
-    openProfileModal()
-    return
-  }
-
-  if (menuId === 'notifications') {
-    openNotificationSettingsModal()
-    return
-  }
-
-  if (menuId === 'password') {
-    openPasswordModal()
-    return
-  }
-
-  if (menuId === 'account') {
-    openAccountModal()
+const handleMenuClick = (menuId: string) => {
+  switch (menuId) {
+    case 'profile':
+      openProfileModal()
+      break
+    case 'notifications':
+      openNotificationSettingsModal()
+      break
+    case 'password':
+      openPasswordModal()
+      break
+    case 'account':
+      openAccountModal()
+      break
   }
 }
 
 watch(
-  () => [
-    currentMember.value?.id,
-    currentMember.value?.profileImagePath,
+  [
+    () => currentMember.value?.id,
+    () => currentMember.value?.profileImagePath,
   ],
   () => {
     void loadProfileImage()
   },
-  {
-    immediate: true,
-  },
+  { immediate: true },
 )
 
 onMounted(() => {
@@ -215,9 +162,7 @@ onMounted(() => {
   void loadTripSummary()
 })
 
-onBeforeUnmount(() => {
-  revokeProfileImageUrl()
-})
+onBeforeUnmount(revokeProfileImageUrl)
 </script>
 
 <template>
@@ -240,9 +185,7 @@ onBeforeUnmount(() => {
         :participating-count="tripSummary.participatingCount"
       />
 
-      <SettingsMenu
-        @select="handleMenuClick"
-      />
+      <SettingsMenu @select="handleMenuClick" />
     </div>
   </section>
 
@@ -285,13 +228,13 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #4566e8;
+  color: var(--tmr-primary);
 }
 
 .desktop-page-heading h1 {
   margin: 0;
   font-size: 30px;
-  color: #1d2430;
+  color: var(--tmr-text);
 }
 
 .mypage-content {

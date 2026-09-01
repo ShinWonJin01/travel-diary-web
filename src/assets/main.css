@@ -1,3 +1,20 @@
+:root {
+  --tmr-primary: #4f7cff;
+  --tmr-primary-dark: #315fd9;
+
+  --tmr-accent: #ff8a6b;
+  --tmr-accent-soft: #ffe7e0;
+
+  --tmr-background: #f7faff;
+  --tmr-surface: #ffffff;
+  --tmr-surface-soft: #eef4ff;
+
+  --tmr-border: #dce6f5;
+
+  --tmr-text: #243042;
+  --tmr-text-sub: #6f7c8f;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -9,8 +26,8 @@ html {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #222831;
-  background: #f2f2f2;
+  color: var(--tmr-text);
+  background: var(--tmr-background);
 }
 
 body {
@@ -43,8 +60,8 @@ a {
   width: min(1180px, calc(100% - 32px));
   min-height: calc(100vh - 40px);
   margin: 20px auto;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(40, 52, 68, 0.03);
+  background: var(--tmr-surface);
+  box-shadow: 0 0 0 1px rgba(79, 124, 255, 0.08);
 }
 
 .app-main {
@@ -53,13 +70,14 @@ a {
 
 @media (max-width: 760px) {
   html {
-    background: #ffffff;
+    background: var(--tmr-surface);
   }
 
   .app-shell {
     width: 100%;
     min-height: calc(100vh - 52px);
     margin: 0;
+    background: var(--tmr-surface);
     box-shadow: none;
   }
 

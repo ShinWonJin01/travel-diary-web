@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+
 import type { RecentActivity } from '@/api/home'
 
 defineProps<{
@@ -7,15 +8,14 @@ defineProps<{
 }>()
 
 const getActivityMessage = (activity: RecentActivity) => {
-  if (activity.photoCount === 1) {
-    return '사진을 추가했습니다.'
-  }
+  if (activity.photoCount === 1) return '사진을 추가했습니다.'
 
   return `사진 ${activity.photoCount}장을 추가했습니다.`
 }
 
 const formatActivityTime = (createdAt: string) => {
   const createdTime = new Date(createdAt).getTime()
+
   if (Number.isNaN(createdTime)) return ''
 
   const diff = Math.max(Date.now() - createdTime, 0)
@@ -58,7 +58,6 @@ const formatActivityTime = (createdAt: string) => {
             <strong>{{ activity.actorNickname }}님이</strong>
             {{ getActivityMessage(activity) }}
           </p>
-
           <span>
             {{ activity.tripTitle }} · {{ formatActivityTime(activity.createdAt) }}
           </span>
@@ -67,6 +66,12 @@ const formatActivityTime = (createdAt: string) => {
     </div>
 
     <div v-else class="empty-activity">
+      <div class="empty-activity-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l3 2" />
+        </svg>
+      </div>
       <p>아직 최근 활동이 없습니다.</p>
     </div>
 
@@ -81,14 +86,15 @@ const formatActivityTime = (createdAt: string) => {
   display: flex;
   flex-direction: column;
   padding: 42px 42px 44px;
-  border-left: 1px solid #dfe4e9;
+  border-left: 1px solid var(--tmr-border);
+  background: var(--tmr-surface);
 }
 
 .activity-area > h1 {
   margin: 0;
   font-size: 19px;
   font-weight: 700;
-  color: #171c24;
+  color: var(--tmr-text);
 }
 
 .activity-list {
@@ -100,41 +106,54 @@ const formatActivityTime = (createdAt: string) => {
 
 .activity-item {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: start;
   gap: 13px;
-  color: inherit;
-  text-decoration: none;
+}
+
+.activity-item:hover .activity-profile {
+  color: var(--tmr-primary-dark);
+  background: var(--tmr-surface-soft);
 }
 
 .activity-item:hover .activity-information p {
-  color: #3157e8;
+  color: var(--tmr-primary-dark);
 }
 
 .activity-profile {
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 42px;
   height: 42px;
-  border: 1.5px solid #222831;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tmr-border);
   border-radius: 50%;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .activity-profile svg {
   width: 27px;
   fill: none;
-  stroke: #222831;
+  stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.4;
+}
+
+.activity-information {
+  min-width: 0;
 }
 
 .activity-information p {
   margin: 1px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #272c34;
+  color: var(--tmr-text);
+  transition: color 0.2s ease;
 }
 
 .activity-information strong {
@@ -143,39 +162,72 @@ const formatActivityTime = (createdAt: string) => {
 
 .activity-information span {
   display: block;
+  overflow: hidden;
   margin-top: 5px;
   font-size: 10px;
-  color: #8f969f;
+  color: var(--tmr-text-sub);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .empty-activity {
   display: flex;
   min-height: 150px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+}
+
+.empty-activity-icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+}
+
+.empty-activity-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .empty-activity p {
   margin: 0;
-  font-size: 12px;
-  color: #959da7;
+  font-size: 11px;
+  color: var(--tmr-text-sub);
 }
 
 .create-trip-button {
   display: flex;
+  height: 52px;
   align-items: center;
   justify-content: center;
-  height: 52px;
   margin-top: auto;
-  border-radius: 7px;
-  font-size: 17px;
+  border-radius: 10px;
+  font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
-  background: #405bf4;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .create-trip-button:hover {
-  background: #304bea;
+  background: var(--tmr-primary-dark);
+}
+
+.create-trip-button:active {
+  transform: scale(0.98);
 }
 
 @media (max-width: 900px) {

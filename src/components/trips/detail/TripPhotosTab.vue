@@ -1,31 +1,54 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import PhotoDetailModal from './photos/PhotoDetailModal.vue'
-import TripPhotoCard from './photos/TripPhotoCard.vue'
 
+import PhotoDetailModal from '@/components/trips/detail/photos/PhotoDetailModal.vue'
+import TripPhotoCard from '@/components/trips/detail/photos/TripPhotoCard.vue'
 import type { PhotoItem } from '@/composables/trips/useTripPhotos'
 
-const props = defineProps<{ photos: PhotoItem[] }>()
+const props = defineProps<{
+  photos: PhotoItem[]
+}>()
 
 const emit = defineEmits<{
   addPhoto: []
   deletePhotos: [photoIds: number[]]
   updateMemo: [photoId: number, memo: string]
   updateTakenAt: [photoId: number, takenAt: string | null]
-  updateLocation: [photoId: number, latitude: number, longitude: number, locationName: string | null]
+  updateLocation: [
+    photoId: number,
+    latitude: number,
+    longitude: number,
+    locationName: string | null,
+  ]
 }>()
 
 const selectedPhotoId = ref<number | null>(null)
+const menuPhotoId = ref<number | null>(null)
 const isSelectionMode = ref(false)
 const selectedPhotoIds = ref<number[]>([])
 
-const selectedPhoto = computed(() =>
-  props.photos.find((photo) => photo.id === selectedPhotoId.value) ?? null,
+const selectedPhoto = computed(
+  () =>
+    props.photos.find((photo) => photo.id === selectedPhotoId.value) ?? null,
 )
 
 const selectablePhotoCount = computed(
   () => props.photos.filter((photo) => photo.canDelete).length,
 )
+
+const selectedPhotoCount = computed(() => selectedPhotoIds.value.length)
+
+const isPhotoSelected = (photoId: number) =>
+  selectedPhotoIds.value.includes(photoId)
+
+const closePhotoMenu = () => {
+  menuPhotoId.value = null
+}
+
+const closePhotoModal = () => {
+  selectedPhotoId.value = null
+  closePhotoMenu()
+}
 
 const handlePhotoClick = (photo: PhotoItem) => {
   if (isSelectionMode.value) {
@@ -33,17 +56,12 @@ const handlePhotoClick = (photo: PhotoItem) => {
     return
   }
 
-  menuPhotoId.value = null
+  closePhotoMenu()
   selectedPhotoId.value = photo.id
 }
 
-const closePhotoModal = () => {
-  selectedPhotoId.value = null
-  menuPhotoId.value = null
-}
-
 const toggleSelectionMode = () => {
-  menuPhotoId.value = null
+  closePhotoMenu()
 
   if (isSelectionMode.value) {
     isSelectionMode.value = false
@@ -53,10 +71,6 @@ const toggleSelectionMode = () => {
 
   closePhotoModal()
   isSelectionMode.value = true
-}
-
-const isPhotoSelected = (photoId: number) => {
-  return selectedPhotoIds.value.includes(photoId)
 }
 
 const togglePhotoSelection = (photo: PhotoItem) => {
@@ -72,41 +86,25 @@ const togglePhotoSelection = (photo: PhotoItem) => {
   selectedPhotoIds.value.push(photo.id)
 }
 
-const selectedPhotoCount = computed(() => selectedPhotoIds.value.length)
-
 const deleteSelectedPhotos = () => {
-  if (!selectedPhotoIds.value.length) return
+  if (selectedPhotoCount.value === 0) return
 
   emit('deletePhotos', [...selectedPhotoIds.value])
   isSelectionMode.value = false
   selectedPhotoIds.value = []
 }
 
-const menuPhotoId = ref<number | null>(null)
-
-const closePhotoMenu = () => {
-  menuPhotoId.value = null
-}
-
-onMounted(() => {
-  document.addEventListener('click', closePhotoMenu)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', closePhotoMenu)
-})
-
 const togglePhotoMenu = (photoId: number) => {
   menuPhotoId.value = menuPhotoId.value === photoId ? null : photoId
 }
 
 const openPhotoEdit = (photoId: number) => {
-  menuPhotoId.value = null
+  closePhotoMenu()
   selectedPhotoId.value = photoId
 }
 
 const deleteSinglePhoto = (photoId: number) => {
-  menuPhotoId.value = null
+  closePhotoMenu()
   emit('deletePhotos', [photoId])
 }
 
@@ -127,14 +125,16 @@ const handleModalLocationUpdate = (
   longitude: number,
   locationName: string | null,
 ) => {
-  emit(
-    'updateLocation',
-    photoId,
-    latitude,
-    longitude,
-    locationName,
-  )
+  emit('updateLocation', photoId, latitude, longitude, locationName)
 }
+
+onMounted(() => {
+  document.addEventListener('click', closePhotoMenu)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closePhotoMenu)
+})
 </script>
 
 <template>
@@ -187,10 +187,7 @@ const handleModalLocationUpdate = (
       </div>
     </div>
 
-    <div
-      v-if="photos.length"
-      class="photo-grid"
-    >
+    <div v-if="photos.length > 0" class="photo-grid">
       <TripPhotoCard
         v-for="photo in photos"
         :key="photo.id"
@@ -216,7 +213,9 @@ const handleModalLocationUpdate = (
       </span>
 
       <p>아직 등록된 사진이 없습니다.</p>
-      <span class="photo-empty-description">여행의 순간을 사진으로 남겨보세요.</span>
+      <span class="photo-empty-description">
+        여행의 순간을 사진으로 남겨보세요.
+      </span>
     </div>
   </section>
 
@@ -233,22 +232,23 @@ const handleModalLocationUpdate = (
 <style scoped>
 .panel-card {
   padding: 18px;
-  border: 1px solid #e6eaf2;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
 .panel-heading h2 {
   margin: 0;
   font-size: 18px;
-  color: #222834;
+  color: var(--tmr-text);
 }
 
 .photo-heading-actions {
@@ -260,17 +260,22 @@ const handleModalLocationUpdate = (
 .photo-select-button {
   height: 34px;
   padding: 0 13px;
-  border: 1px solid #dfe3eb;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #4d5664;
-  background: #ffffff;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .photo-select-button:hover {
-  background: #f5f7fa;
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .photo-add-button {
@@ -280,13 +285,19 @@ const handleModalLocationUpdate = (
   border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #ffffff;
-  background: #405bf4;
-  cursor: pointer;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .photo-add-button:hover {
-  background: #304bea;
+  background: var(--tmr-primary-dark);
+}
+
+.photo-add-button:active {
+  transform: scale(0.98);
 }
 
 .photo-grid {
@@ -302,10 +313,10 @@ const handleModalLocationUpdate = (
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px dashed #d9dee7;
+  border: 1px dashed var(--tmr-border);
   border-radius: 12px;
-  color: #8c95a3;
-  background: #fafbfd;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .photo-empty-icon {
@@ -316,8 +327,8 @@ const handleModalLocationUpdate = (
   justify-content: center;
   margin-bottom: 3px;
   border-radius: 50%;
-  color: #8794a3;
-  background: #eef2f6;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .photo-empty-icon svg {
@@ -325,26 +336,27 @@ const handleModalLocationUpdate = (
   height: 23px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .photo-empty p {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: #596270;
+  color: var(--tmr-text);
 }
 
 .photo-empty-description {
   font-size: 10px;
+  color: var(--tmr-text-sub);
 }
 
 .selected-count {
   font-size: 11px;
   font-weight: 600;
-  color: #687383;
+  color: var(--tmr-text-sub);
 }
 
 .photo-delete-selected-button {
@@ -355,13 +367,19 @@ const handleModalLocationUpdate = (
   font-size: 11px;
   font-weight: 700;
   color: #ffffff;
-  background: #e5484d;
-  cursor: pointer;
+  background: #d94b5b;
+  transition:
+    background 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.photo-delete-selected-button:hover:not(:disabled) {
+  background: #c83c4c;
 }
 
 .photo-delete-selected-button:disabled {
-  opacity: 0.45;
   cursor: not-allowed;
+  opacity: 0.45;
 }
 
 @media (max-width: 760px) {
@@ -383,7 +401,8 @@ const handleModalLocationUpdate = (
     display: none;
   }
 
-  .photo-select-button {
+  .photo-select-button,
+  .photo-delete-selected-button {
     height: 30px;
     padding: 0 10px;
     font-size: 10px;
@@ -413,18 +432,9 @@ const handleModalLocationUpdate = (
     font-size: 11px;
   }
 
-  .photo-empty-description {
-    font-size: 9px;
-  }
-
+  .photo-empty-description,
   .selected-count {
     font-size: 9px;
-  }
-
-  .photo-delete-selected-button {
-    height: 30px;
-    padding: 0 10px;
-    font-size: 10px;
   }
 }
 </style>

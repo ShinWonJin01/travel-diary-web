@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { MapPhoto } from '@/composables/trips/useTripPhotos'
-
 import TripPhotoMap from '@/components/trips/detail/map/TripPhotoMap.vue'
+import type { MapPhoto } from '@/composables/trips/useTripPhotos'
 
 defineProps<{
   photos: MapPhoto[]
@@ -10,19 +9,16 @@ defineProps<{
 
 <template>
   <div class="map-card">
-    <TripPhotoMap
-      :photos="photos"
-      mode="full"
-    />
+    <TripPhotoMap :photos="photos" mode="full" />
   </div>
 </template>
 
 <style scoped>
 .map-card {
   overflow: hidden;
-  border: 1px solid #e6eaf2;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 @media (max-width: 760px) {

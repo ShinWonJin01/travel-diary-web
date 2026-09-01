@@ -1,10 +1,5 @@
 <script setup lang="ts">
-interface Participant {
-  id: number
-  nickname: string
-  profileImageUrl: string | null
-  avatarClass: string
-}
+import type { Participant } from '@/composables/trips/useTripParticipants'
 
 defineProps<{
   participantCount: number
@@ -16,7 +11,9 @@ defineProps<{
   invitationErrorMessage: string
 }>()
 
-const inviteNickname = defineModel<string>('inviteNickname', { required: true })
+const inviteNickname = defineModel<string>('inviteNickname', {
+  required: true,
+})
 
 const emit = defineEmits<{
   close: []
@@ -29,16 +26,21 @@ const emit = defineEmits<{
     class="participant-modal-backdrop"
     @click.self="emit('close')"
   >
-    <section class="participant-modal">
+    <section
+      class="participant-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="participant-modal-title"
+    >
       <div class="participant-modal-header">
         <div>
           <p>PARTICIPANTS</p>
-          <h2>참여자 관리</h2>
+          <h2 id="participant-modal-title">참여자 관리</h2>
         </div>
 
         <button
-          type="button"
           class="participant-modal-close"
+          type="button"
           aria-label="닫기"
           @click="emit('close')"
         >
@@ -65,12 +67,12 @@ const emit = defineEmits<{
               :src="participant.profileImageUrl"
               :alt="`${participant.nickname} 프로필`"
             />
-            <template v-else>
+            <span v-else>
               {{ participant.nickname.slice(0, 1) }}
-            </template>
+            </span>
           </span>
 
-          <div>
+          <div class="participant-information">
             <strong>{{ participant.nickname }}</strong>
             <span>
               {{ participant.id === ownerId ? '여행 생성자' : '참여자' }}
@@ -97,10 +99,7 @@ const emit = defineEmits<{
             :disabled="isInviting"
           />
 
-          <button
-            type="submit"
-            :disabled="isInviting"
-          >
+          <button type="submit" :disabled="isInviting">
             {{ isInviting ? '초대 중...' : '초대하기' }}
           </button>
         </div>
@@ -108,6 +107,7 @@ const emit = defineEmits<{
         <p
           v-if="invitationMessage"
           class="participant-action-message"
+          role="status"
         >
           {{ invitationMessage }}
         </p>
@@ -115,6 +115,7 @@ const emit = defineEmits<{
         <p
           v-if="invitationErrorMessage"
           class="participant-action-error"
+          role="alert"
         >
           {{ invitationErrorMessage }}
         </p>
@@ -140,9 +141,10 @@ const emit = defineEmits<{
   max-height: min(680px, calc(100vh - 40px));
   overflow-y: auto;
   padding: 22px;
+  border: 1px solid var(--tmr-border);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(26, 36, 53, 0.24);
+  background: var(--tmr-surface);
+  box-shadow: 0 24px 70px rgba(36, 48, 66, 0.22);
 }
 
 .participant-modal-header {
@@ -157,13 +159,13 @@ const emit = defineEmits<{
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #4c6fea;
+  color: var(--tmr-primary);
 }
 
 .participant-modal-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #222a36;
+  color: var(--tmr-text);
 }
 
 .participant-modal-close {
@@ -174,9 +176,16 @@ const emit = defineEmits<{
   border-radius: 9px;
   font-size: 23px;
   line-height: 1;
-  color: #747e8c;
-  background: #f3f5f8;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.participant-modal-close:hover {
+  color: var(--tmr-primary);
+  background: var(--tmr-background);
 }
 
 .participant-modal-summary {
@@ -185,18 +194,19 @@ const emit = defineEmits<{
   gap: 5px;
   margin-top: 20px;
   padding: 14px;
+  border: 1px solid var(--tmr-border);
   border-radius: 10px;
-  background: #f5f7fb;
+  background: var(--tmr-surface-soft);
 }
 
 .participant-modal-summary strong {
   font-size: 13px;
-  color: #343c48;
+  color: var(--tmr-text);
 }
 
 .participant-modal-summary span {
   font-size: 10px;
-  color: #8b94a0;
+  color: var(--tmr-text-sub);
 }
 
 .participant-modal-list {
@@ -210,21 +220,25 @@ const emit = defineEmits<{
   align-items: center;
   gap: 11px;
   padding: 10px 2px;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--tmr-border);
+}
+
+.participant-modal-list article:last-child {
+  border-bottom: 0;
 }
 
 .participant-avatar {
   display: grid;
   width: 30px;
   height: 30px;
+  flex: 0 0 auto;
   place-items: center;
   overflow: hidden;
-  padding: 0;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--tmr-surface);
   border-radius: 50%;
   font-size: 10px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--tmr-surface);
 }
 
 .participant-avatar img {
@@ -234,42 +248,41 @@ const emit = defineEmits<{
 }
 
 .avatar-blue {
-  background: #6f91c1;
+  background: var(--tmr-primary);
 }
 
 .avatar-green {
-  background: #72a584;
+  background: #63ad9a;
 }
 
 .avatar-orange {
-  background: #c88d61;
+  background: var(--tmr-accent);
 }
 
-.remaining-avatar {
-  color: #5e6b7a;
-  background: #eef1f5;
-}
-
-.participant-modal-list article > div {
+.participant-information {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 3px;
 }
 
-.participant-modal-list article strong {
+.participant-information strong {
+  overflow: hidden;
   font-size: 12px;
-  color: #303743;
+  color: var(--tmr-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.participant-modal-list article div span {
+.participant-information span {
   font-size: 9px;
-  color: #939ba6;
+  color: var(--tmr-text-sub);
 }
 
 .participant-invite-form {
   margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px solid #e8ecf1;
+  border-top: 1px solid var(--tmr-border);
 }
 
 .participant-invite-form label {
@@ -277,7 +290,7 @@ const emit = defineEmits<{
   margin-bottom: 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #495362;
+  color: var(--tmr-text);
 }
 
 .participant-invite-row {
@@ -290,15 +303,30 @@ const emit = defineEmits<{
   min-width: 0;
   height: 42px;
   padding: 0 12px;
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 9px;
   outline: none;
   font-size: 12px;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.participant-invite-row input::placeholder {
+  color: var(--tmr-text-sub);
 }
 
 .participant-invite-row input:focus {
-  border-color: #5878e9;
-  box-shadow: 0 0 0 3px rgba(88, 120, 233, 0.11);
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
+}
+
+.participant-invite-row input:disabled {
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
 .participant-invite-row button {
@@ -308,9 +336,19 @@ const emit = defineEmits<{
   border-radius: 9px;
   font-size: 11px;
   font-weight: 700;
-  color: #ffffff;
-  background: #3565ef;
-  cursor: pointer;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.participant-invite-row button:hover:not(:disabled) {
+  background: var(--tmr-primary-dark);
+}
+
+.participant-invite-row button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .participant-invite-row button:disabled {
@@ -321,15 +359,19 @@ const emit = defineEmits<{
 .participant-action-message,
 .participant-action-error {
   margin: 9px 0 0;
+  padding: 9px 10px;
+  border-radius: 7px;
   font-size: 10px;
 }
 
 .participant-action-message {
-  color: #28745c;
+  color: #2f8068;
+  background: #e9f7f2;
 }
 
 .participant-action-error {
-  color: #c74658;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
 }
 
 @media (max-width: 760px) {
@@ -342,6 +384,9 @@ const emit = defineEmits<{
     width: 100%;
     max-height: 82vh;
     padding: 18px 17px 22px;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
     border-radius: 18px 18px 0 0;
   }
 

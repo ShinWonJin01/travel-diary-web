@@ -15,6 +15,13 @@ const MAX_COVER_IMAGE_SIZE = 10 * 1024 * 1024
 const imageInput = ref<HTMLInputElement | null>(null)
 const imagePreviewUrl = ref('')
 
+const revokeImagePreviewUrl = () => {
+  if (imagePreviewUrl.value) {
+    URL.revokeObjectURL(imagePreviewUrl.value)
+    imagePreviewUrl.value = ''
+  }
+}
+
 const openImagePicker = () => {
   imageInput.value?.click()
 }
@@ -23,9 +30,7 @@ const handleImageChange = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
 
-  if (!file) {
-    return
-  }
+  if (!file) return
 
   if (!file.type.startsWith('image/')) {
     emit('error', '이미지 파일만 등록할 수 있습니다.')
@@ -39,10 +44,7 @@ const handleImageChange = (event: Event) => {
     return
   }
 
-  if (imagePreviewUrl.value) {
-    URL.revokeObjectURL(imagePreviewUrl.value)
-  }
-
+  revokeImagePreviewUrl()
   imagePreviewUrl.value = URL.createObjectURL(file)
 
   emit('change', file)
@@ -50,33 +52,24 @@ const handleImageChange = (event: Event) => {
 }
 
 const removeImage = () => {
-  if (imagePreviewUrl.value) {
-    URL.revokeObjectURL(imagePreviewUrl.value)
-  }
-
-  imagePreviewUrl.value = ''
+  revokeImagePreviewUrl()
 
   if (imageInput.value) {
     imageInput.value.value = ''
   }
 
   emit('change', null)
+  emit('error', '')
 }
 
-onBeforeUnmount(() => {
-  if (imagePreviewUrl.value) {
-    URL.revokeObjectURL(imagePreviewUrl.value)
-  }
-})
+onBeforeUnmount(revokeImagePreviewUrl)
 </script>
 
 <template>
   <section class="form-section">
     <div class="section-heading">
-      <div>
-        <h2>대표 이미지</h2>
-        <p>여행 기록 목록에 표시할 사진을 등록해 주세요.</p>
-      </div>
+      <h2>대표 이미지</h2>
+      <p>여행 기록 목록에 표시할 사진을 등록해 주세요.</p>
     </div>
 
     <input
@@ -87,17 +80,12 @@ onBeforeUnmount(() => {
       @change="handleImageChange"
     />
 
-    <div
-      v-if="imagePreviewUrl"
-      class="image-preview"
-    >
-      <img
-        :src="imagePreviewUrl"
-        alt="선택한 여행 대표 이미지"
-      />
+    <div v-if="imagePreviewUrl" class="image-preview">
+      <img :src="imagePreviewUrl" alt="선택한 여행 대표 이미지" />
 
       <div class="image-preview-overlay">
         <button
+          class="change-image-button"
           type="button"
           @click="openImagePicker"
         >
@@ -121,17 +109,8 @@ onBeforeUnmount(() => {
       @click="openImagePicker"
     >
       <span class="image-upload-icon">
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <rect
-            x="3"
-            y="5"
-            width="18"
-            height="14"
-            rx="2"
-          />
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2" />
           <circle cx="9" cy="10" r="2" />
           <path d="m4 17 5-5 4 4 3-3 4 4" />
         </svg>
@@ -146,31 +125,27 @@ onBeforeUnmount(() => {
 <style scoped>
 .form-section {
   padding: 26px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 5px 18px rgba(37, 54, 78, 0.05);
+  background: var(--tmr-surface);
+  box-shadow: 0 5px 18px rgba(49, 95, 217, 0.05);
 }
 
 .section-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
   margin-bottom: 24px;
 }
 
 .section-heading h2 {
   margin: 0;
   font-size: 18px;
-  color: #222934;
+  color: var(--tmr-text);
 }
 
 .section-heading p {
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #8a929d;
+  color: var(--tmr-text-sub);
 }
 
 .hidden-file-input {
@@ -185,27 +160,29 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border: 1px dashed #cbd3de;
+  border: 1px dashed var(--tmr-border);
   border-radius: 11px;
-  color: #76818e;
-  background: #fafbfd;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-background);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .image-upload-area:hover {
-  border-color: #6d86e8;
-  background: #f7f9ff;
+  border-color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .image-upload-icon {
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 47px;
   height: 47px;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  color: #5671dc;
-  background: #eaf0ff;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .image-upload-icon svg {
@@ -220,20 +197,21 @@ onBeforeUnmount(() => {
 
 .image-upload-area strong {
   font-size: 13px;
-  color: #424b57;
+  color: var(--tmr-text);
 }
 
 .image-upload-area > span:last-child {
   font-size: 10px;
-  color: #9ba3ad;
+  color: var(--tmr-text-sub);
 }
 
 .image-preview {
   position: relative;
   height: 310px;
   overflow: hidden;
+  border: 1px solid var(--tmr-border);
   border-radius: 11px;
-  background: #edf1f5;
+  background: var(--tmr-surface-soft);
 }
 
 .image-preview img {
@@ -257,14 +235,33 @@ onBeforeUnmount(() => {
   border-radius: 7px;
   font-size: 11px;
   font-weight: 700;
-  color: #343c47;
-  background: rgba(255, 255, 255, 0.94);
-  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
-.image-preview-overlay .remove-image-button {
-  color: #ffffff;
-  background: rgba(42, 48, 58, 0.78);
+.change-image-button {
+  color: var(--tmr-primary-dark);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.change-image-button:hover {
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
+}
+
+.remove-image-button {
+  color: var(--tmr-surface);
+  background: var(--tmr-accent);
+}
+
+.remove-image-button:hover {
+  background: color-mix(in srgb, var(--tmr-accent) 85%, #000000);
+}
+
+.image-preview-overlay button:active {
+  transform: scale(0.97);
 }
 
 @media (max-width: 760px) {

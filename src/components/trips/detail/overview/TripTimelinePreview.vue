@@ -15,10 +15,7 @@ const emit = defineEmits<{
     <div class="timeline-card-header">
       <h2>타임라인</h2>
 
-      <button
-        type="button"
-        @click="emit('view-all')"
-      >
+      <button type="button" @click="emit('view-all')">
         전체보기 <span>›</span>
       </button>
     </div>
@@ -68,10 +65,12 @@ const emit = defineEmits<{
       </section>
     </div>
 
-    <div
-      v-else
-      class="timeline-empty"
-    >
+    <div v-else class="timeline-empty">
+      <span class="timeline-empty-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 4v16M18 4v16M8 8h8M8 12h5M8 16h7" />
+        </svg>
+      </span>
       <p>아직 등록된 사진이 없습니다.</p>
     </div>
   </section>
@@ -86,9 +85,9 @@ const emit = defineEmits<{
   overflow: hidden;
   box-sizing: border-box;
   padding: 18px 16px;
-  border: 1px solid #e6eaf2;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .timeline-card-header {
@@ -101,16 +100,20 @@ const emit = defineEmits<{
 .timeline-card-header h2 {
   margin: 0;
   font-size: 18px;
-  color: #222834;
+  color: var(--tmr-text);
 }
 
 .timeline-card-header button {
   border: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #4b74f0;
+  color: var(--tmr-primary);
   background: transparent;
-  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.timeline-card-header button:hover {
+  color: var(--tmr-primary-dark);
 }
 
 .timeline-card-header button span {
@@ -126,11 +129,8 @@ const emit = defineEmits<{
   gap: 22px;
   overflow-y: auto;
   padding-right: 4px;
-}
-
-.timeline-group-list {
   scrollbar-width: thin;
-  scrollbar-color: #c7cfdb transparent;
+  scrollbar-color: var(--tmr-border) transparent;
 }
 
 .timeline-group-list::-webkit-scrollbar {
@@ -143,30 +143,31 @@ const emit = defineEmits<{
 
 .timeline-group-list::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: #c7cfdb;
+  background: var(--tmr-border);
 }
 
 .timeline-group-list::-webkit-scrollbar-thumb:hover {
-  background: #aeb8c7;
+  background: var(--tmr-text-sub);
 }
 
 .timeline-group h3 {
   margin: 0 0 12px;
   font-size: 14px;
-  color: #303743;
+  color: var(--tmr-text);
 }
 
 .timeline-group h3 span {
   margin-left: 4px;
   font-size: 12px;
-  color: #8a92a0;
+  font-weight: 500;
+  color: var(--tmr-text-sub);
 }
 
 .timeline-row {
   display: grid;
   grid-template-columns: 54px 18px minmax(0, 1fr);
-  align-items: start;
   min-width: 0;
+  align-items: start;
 }
 
 .timeline-row + .timeline-row {
@@ -176,14 +177,14 @@ const emit = defineEmits<{
 .timeline-time {
   padding-top: 4px;
   font-size: 11px;
-  color: #8a92a0;
+  color: var(--tmr-text-sub);
 }
 
 .timeline-dot-line {
   position: relative;
   display: flex;
-  justify-content: center;
   min-height: 72px;
+  justify-content: center;
 }
 
 .timeline-dot-line::after {
@@ -191,7 +192,7 @@ const emit = defineEmits<{
   top: 14px;
   bottom: -14px;
   width: 1px;
-  background: #dbe1eb;
+  background: var(--tmr-border);
   content: '';
 }
 
@@ -206,7 +207,7 @@ const emit = defineEmits<{
   height: 8px;
   margin-top: 7px;
   border-radius: 50%;
-  background: #4c74ee;
+  background: var(--tmr-primary);
 }
 
 .timeline-entry-content {
@@ -219,8 +220,11 @@ const emit = defineEmits<{
 
 .timeline-entry-content strong {
   min-width: 0;
+  overflow: hidden;
   font-size: 13px;
-  color: #262d38;
+  color: var(--tmr-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline-thumbnail {
@@ -229,7 +233,7 @@ const emit = defineEmits<{
   flex: 0 0 auto;
   overflow: hidden;
   border-radius: 10px;
-  background: #edf1f5;
+  background: var(--tmr-surface-soft);
 }
 
 .timeline-thumbnail img {
@@ -239,44 +243,68 @@ const emit = defineEmits<{
 }
 
 .timeline-empty {
-  display: grid;
+  display: flex;
   min-height: 160px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--tmr-text-sub);
+}
+
+.timeline-empty-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
   place-items: center;
+  border-radius: 50%;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+}
+
+.timeline-empty-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .timeline-empty p {
   margin: 0;
   font-size: 12px;
-  color: #98a1ad;
 }
 
 .thumb-blue {
-  background: linear-gradient(145deg, #88aeda, #4d7cbd);
+  background: linear-gradient(145deg, #91b6ff, #5d86e8);
 }
 
 .thumb-green {
-  background: linear-gradient(145deg, #96c09e, #5d8c66);
+  background: linear-gradient(145deg, #9bd8c7, #63ad9a);
 }
 
 .thumb-orange {
-  background: linear-gradient(145deg, #f0b98c, #ba7d58);
+  background: linear-gradient(145deg, #ffc2af, #ff8a6b);
 }
 
 .thumb-purple {
-  background: linear-gradient(145deg, #b4a6d8, #7d6ca8);
+  background: linear-gradient(145deg, #b5acf1, #8275d1);
 }
 
 .thumb-sky {
-  background: linear-gradient(145deg, #8fd1ea, #5f99c7);
+  background: linear-gradient(145deg, #a5dcf3, #6db6d6);
 }
 
 @media (max-width: 760px) {
   .timeline-side-card {
+    height: auto;
+    overflow: visible;
     margin-top: 10px;
     padding: 12px 11px;
     border-radius: 10px;
-    height: auto;
-    overflow: visible;
   }
 
   .timeline-card-header {
@@ -358,6 +386,17 @@ const emit = defineEmits<{
 
   .timeline-empty {
     min-height: 100px;
+    gap: 7px;
+  }
+
+  .timeline-empty-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .timeline-empty-icon svg {
+    width: 16px;
+    height: 16px;
   }
 
   .timeline-empty p {

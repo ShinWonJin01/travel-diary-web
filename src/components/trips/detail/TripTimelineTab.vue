@@ -1,18 +1,5 @@
 <script setup lang="ts">
-interface TimelineEntry {
-  id: number
-  time: string
-  title: string
-  thumbnailClass: string
-  imageUrl: string
-  memo: string | null
-}
-
-interface TimelineGroup {
-  dateLabel: string
-  dayLabel: string
-  entries: TimelineEntry[]
-}
+import type { TimelineGroup } from '@/composables/trips/useTripPhotos'
 
 defineProps<{
   timelineGroups: TimelineGroup[]
@@ -26,7 +13,7 @@ defineProps<{
     </div>
 
     <div
-      v-if="timelineGroups.length"
+      v-if="timelineGroups.length > 0"
       class="timeline-group-list"
     >
       <section
@@ -55,8 +42,7 @@ defineProps<{
           <div class="timeline-entry-content">
             <div class="timeline-texts">
               <strong>{{ entry.title }}</strong>
-              <p v-if="entry.memo">{{ entry.memo }}</p>
-              <p v-else>메모가 없습니다.</p>
+              <p>{{ entry.memo || '메모가 없습니다.' }}</p>
             </div>
 
             <img
@@ -69,22 +55,15 @@ defineProps<{
       </section>
     </div>
 
-    <div
-      v-else
-      class="timeline-empty"
-    >
+    <div v-else class="timeline-empty">
       <span class="timeline-empty-icon">
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9" />
           <path d="M12 7v5l3 2" />
         </svg>
       </span>
 
       <p>아직 타임라인이 없습니다.</p>
-
       <span class="timeline-empty-description">
         사진의 촬영 시간이 등록되면 시간순으로 표시됩니다.
       </span>
@@ -95,9 +74,9 @@ defineProps<{
 <style scoped>
 .panel-card {
   padding: 18px;
-  border: 1px solid #e6eaf2;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .panel-heading {
@@ -110,7 +89,7 @@ defineProps<{
 .panel-heading h2 {
   margin: 0;
   font-size: 18px;
-  color: #222834;
+  color: var(--tmr-text);
 }
 
 .timeline-group-list {
@@ -123,20 +102,21 @@ defineProps<{
 .timeline-group h3 {
   margin: 0 0 12px;
   font-size: 14px;
-  color: #303743;
+  color: var(--tmr-text);
 }
 
 .timeline-group h3 span {
   margin-left: 4px;
   font-size: 12px;
-  color: #8a92a0;
+  font-weight: 500;
+  color: var(--tmr-text-sub);
 }
 
 .timeline-row {
   display: grid;
   grid-template-columns: 54px 18px minmax(0, 1fr);
-  align-items: start;
   min-width: 0;
+  align-items: start;
 }
 
 .timeline-row + .timeline-row {
@@ -146,14 +126,14 @@ defineProps<{
 .timeline-time {
   padding-top: 4px;
   font-size: 11px;
-  color: #8a92a0;
+  color: var(--tmr-text-sub);
 }
 
 .timeline-dot-line {
   position: relative;
   display: flex;
-  justify-content: center;
   min-height: 72px;
+  justify-content: center;
 }
 
 .timeline-dot-line::after {
@@ -161,7 +141,7 @@ defineProps<{
   top: 14px;
   bottom: -14px;
   width: 1px;
-  background: #dbe1eb;
+  background: var(--tmr-border);
   content: '';
 }
 
@@ -176,7 +156,7 @@ defineProps<{
   height: 8px;
   margin-top: 7px;
   border-radius: 50%;
-  background: #4c74ee;
+  background: var(--tmr-primary);
 }
 
 .timeline-entry-content {
@@ -187,22 +167,29 @@ defineProps<{
   gap: 10px;
 }
 
-.timeline-entry-content strong {
-  display: block;
-  min-width: 0;
-  font-size: 13px;
-  color: #262d38;
-}
-
 .timeline-texts {
   min-width: 0;
   flex: 1;
 }
 
+.timeline-texts strong {
+  display: block;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--tmr-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .timeline-texts p {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 6px 0 0;
   font-size: 11px;
-  color: #8d95a1;
+  line-height: 1.45;
+  color: var(--tmr-text-sub);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .timeline-thumbnail {
@@ -211,6 +198,7 @@ defineProps<{
   flex: 0 0 auto;
   border-radius: 10px;
   object-fit: cover;
+  background: var(--tmr-surface-soft);
 }
 
 .timeline-empty {
@@ -220,10 +208,10 @@ defineProps<{
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px dashed #d9dee7;
+  border: 1px dashed var(--tmr-border);
   border-radius: 12px;
-  color: #8c95a3;
-  background: #fafbfd;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-background);
 }
 
 .timeline-empty-icon {
@@ -234,8 +222,8 @@ defineProps<{
   justify-content: center;
   margin-bottom: 3px;
   border-radius: 50%;
-  color: #8794a3;
-  background: #eef2f6;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .timeline-empty-icon svg {
@@ -243,20 +231,21 @@ defineProps<{
   height: 23px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .timeline-empty p {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: #596270;
+  color: var(--tmr-text);
 }
 
 .timeline-empty-description {
   font-size: 10px;
+  color: var(--tmr-text-sub);
 }
 
 @media (max-width: 760px) {
@@ -320,7 +309,7 @@ defineProps<{
     gap: 8px;
   }
 
-  .timeline-entry-content strong {
+  .timeline-texts strong {
     font-size: 10px;
   }
 

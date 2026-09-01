@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref } from 'vue'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 
-import LocationSearch from '@/components/trips/LocationSearch.vue'
 import type { LocationSearchResult } from '@/api/geocoding'
+import LocationSearch from '@/components/trips/LocationSearch.vue'
+
+import 'leaflet/dist/leaflet.css'
 
 interface PhotoItem {
   id: number
@@ -22,13 +23,20 @@ interface PhotoItem {
 
 type EditType = 'takenAt' | 'location' | 'memo' | null
 
-const props = defineProps<{ photo: PhotoItem }>()
+const props = defineProps<{
+  photo: PhotoItem
+}>()
 
 const emit = defineEmits<{
   close: []
   updateMemo: [photoId: number, memo: string]
   updateTakenAt: [photoId: number, takenAt: string | null]
-  updateLocation: [photoId: number, latitude: number, longitude: number, locationName: string | null]
+  updateLocation: [
+    photoId: number,
+    latitude: number,
+    longitude: number,
+    locationName: string | null,
+  ]
 }>()
 
 const editType = ref<EditType>(null)
@@ -49,6 +57,7 @@ const destroyLocationMap = () => {
 
 const resetEdit = () => {
   destroyLocationMap()
+
   editType.value = null
   takenAtDraft.value = ''
   memoDraft.value = ''
@@ -69,6 +78,7 @@ const startTakenAtEdit = () => {
 
 const saveTakenAt = () => {
   const takenAt = takenAtDraft.value ? `${takenAtDraft.value}:00` : null
+
   emit('updateTakenAt', props.photo.id, takenAt)
   resetEdit()
 }
@@ -96,6 +106,8 @@ const updateLocationMarker = (latitude: number, longitude: number) => {
   locationMarker = L.circleMarker(position, {
     radius: 8,
     weight: 2,
+    color: '#4f7cff',
+    fillColor: '#4f7cff',
     fillOpacity: 0.9,
   }).addTo(locationMap)
 }
@@ -120,6 +132,7 @@ const startLocationEdit = async () => {
   editType.value = 'location'
   selectedLatitude.value = props.photo.latitude
   selectedLongitude.value = props.photo.longitude
+  selectedLocationName.value = null
 
   await nextTick()
 
@@ -131,17 +144,25 @@ const startLocationEdit = async () => {
   const latitude = props.photo.latitude
   const longitude = props.photo.longitude
   const hasLocation = latitude !== null && longitude !== null
+  const center: L.LatLngTuple = hasLocation
+    ? [latitude, longitude]
+    : [36.5, 127.8]
 
-  let center: L.LatLngTuple = [36.5, 127.8]
-  if (hasLocation) center = [latitude, longitude]
+  locationMap = L.map(mapElement).setView(
+    center,
+    hasLocation ? 15 : 7,
+  )
 
-  locationMap = L.map(mapElement).setView(center, hasLocation ? 15 : 7)
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+  ).addTo(locationMap)
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(locationMap)
-
-  if (hasLocation) updateLocationMarker(latitude, longitude)
+  if (hasLocation) {
+    updateLocationMarker(latitude, longitude)
+  }
 
   locationMap.on('click', (event) => {
     selectedLatitude.value = event.latlng.lat
@@ -151,11 +172,16 @@ const startLocationEdit = async () => {
     updateLocationMarker(event.latlng.lat, event.latlng.lng)
   })
 
-  requestAnimationFrame(() => locationMap?.invalidateSize())
+  requestAnimationFrame(() => {
+    locationMap?.invalidateSize()
+  })
 }
 
 const saveLocation = () => {
-  if (selectedLatitude.value === null || selectedLongitude.value === null) {
+  if (
+    selectedLatitude.value === null ||
+    selectedLongitude.value === null
+  ) {
     window.alert('장소를 검색하거나 지도에서 위치를 선택해 주세요.')
     return
   }
@@ -177,11 +203,20 @@ onBeforeUnmount(destroyLocationMap)
 <template>
   <div class="modal-backdrop" @click.self="closeModal">
     <section class="photo-modal">
-      <button class="modal-close-button" type="button" aria-label="닫기" @click="closeModal">
+      <button
+        class="modal-close-button"
+        type="button"
+        aria-label="닫기"
+        @click="closeModal"
+      >
         ×
       </button>
 
-      <img class="photo-modal-image" :src="photo.imageUrl" :alt="photo.title" />
+      <img
+        class="photo-modal-image"
+        :src="photo.imageUrl"
+        :alt="photo.title"
+      />
 
       <div class="photo-modal-content">
         <div class="photo-info">
@@ -193,19 +228,38 @@ onBeforeUnmount(destroyLocationMap)
           <input v-model="takenAtDraft" type="datetime-local" />
 
           <div class="editor-actions">
-            <button type="button" @click="resetEdit">취소</button>
-            <button class="save-button" type="button" @click="saveTakenAt">저장</button>
+            <button type="button" @click="resetEdit">
+              취소
+            </button>
+            <button
+              class="save-button"
+              type="button"
+              @click="saveTakenAt"
+            >
+              저장
+            </button>
           </div>
         </div>
 
         <div v-else-if="editType === 'location'" class="photo-editor">
           <LocationSearch @select="handleLocationSearchSelect" />
 
-          <div id="photo-detail-location-map" class="photo-location-map"></div>
+          <div
+            id="photo-detail-location-map"
+            class="photo-location-map"
+          ></div>
 
           <div class="editor-actions">
-            <button type="button" @click="resetEdit">취소</button>
-            <button class="save-button" type="button" @click="saveLocation">저장</button>
+            <button type="button" @click="resetEdit">
+              취소
+            </button>
+            <button
+              class="save-button"
+              type="button"
+              @click="saveLocation"
+            >
+              저장
+            </button>
           </div>
         </div>
 
@@ -217,8 +271,16 @@ onBeforeUnmount(destroyLocationMap)
           ></textarea>
 
           <div class="editor-actions">
-            <button type="button" @click="resetEdit">취소</button>
-            <button class="save-button" type="button" @click="saveMemo">저장</button>
+            <button type="button" @click="resetEdit">
+              취소
+            </button>
+            <button
+              class="save-button"
+              type="button"
+              @click="saveMemo"
+            >
+              저장
+            </button>
           </div>
         </div>
 
@@ -230,15 +292,27 @@ onBeforeUnmount(destroyLocationMap)
           </div>
 
           <div class="photo-actions">
-            <button v-if="photo.canEditMemo" type="button" @click="startTakenAtEdit">
+            <button
+              v-if="photo.canEditMemo"
+              type="button"
+              @click="startTakenAtEdit"
+            >
               시간 수정
             </button>
 
-            <button v-if="photo.canEditLocation" type="button" @click="startLocationEdit">
+            <button
+              v-if="photo.canEditLocation"
+              type="button"
+              @click="startLocationEdit"
+            >
               위치 수정
             </button>
 
-            <button v-if="photo.canEditMemo" type="button" @click="startMemoEdit">
+            <button
+              v-if="photo.canEditMemo"
+              type="button"
+              @click="startMemoEdit"
+            >
               {{ photo.memo ? '메모 수정' : '메모 추가' }}
             </button>
           </div>
@@ -265,8 +339,10 @@ onBeforeUnmount(destroyLocationMap)
   width: min(760px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
+  border: 1px solid var(--tmr-border);
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--tmr-surface);
+  box-shadow: 0 18px 50px rgba(20, 30, 45, 0.2);
 }
 
 .modal-close-button {
@@ -284,7 +360,11 @@ onBeforeUnmount(destroyLocationMap)
   font-size: 22px;
   color: #ffffff;
   background: rgba(20, 26, 36, 0.7);
-  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.modal-close-button:hover {
+  background: rgba(20, 26, 36, 0.9);
 }
 
 .photo-modal-image {
@@ -295,37 +375,43 @@ onBeforeUnmount(destroyLocationMap)
   background: #111722;
 }
 
-.photo-modal-content { padding: 20px; }
+.photo-modal-content {
+  padding: 20px;
+}
 
 .photo-info strong {
   display: block;
   font-size: 18px;
-  color: #252b37;
+  color: var(--tmr-text);
 }
 
 .photo-info span {
   display: block;
   margin-top: 6px;
   font-size: 12px;
-  color: #77808d;
+  color: var(--tmr-text-sub);
 }
 
-.photo-memo { margin-top: 18px; }
+.photo-memo {
+  margin-top: 18px;
+}
 
 .photo-memo > span {
   font-size: 11px;
   font-weight: 700;
-  color: #77808d;
+  color: var(--tmr-text-sub);
 }
 
 .photo-memo p {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.7;
-  color: #4f5865;
+  color: var(--tmr-text);
 }
 
-.photo-memo .empty-memo { color: #98a0ac; }
+.photo-memo .empty-memo {
+  color: var(--tmr-text-sub);
+}
 
 .photo-actions {
   display: flex;
@@ -337,28 +423,55 @@ onBeforeUnmount(destroyLocationMap)
 .editor-actions button {
   height: 34px;
   padding: 0 12px;
-  border: 1px solid #dfe3eb;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
   font-size: 11px;
-  color: #4d5664;
-  background: #ffffff;
-  cursor: pointer;
+  font-weight: 600;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
-.photo-editor { margin-top: 18px; }
+.photo-actions button:hover,
+.editor-actions button:hover {
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+}
+
+.photo-editor {
+  margin-top: 18px;
+}
 
 .photo-editor input,
 .photo-editor textarea {
+  box-sizing: border-box;
   width: 100%;
   padding: 10px;
-  border: 1px solid #d9dee7;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
-  box-sizing: border-box;
+  outline: none;
   font: inherit;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.photo-editor input:focus,
+.photo-editor textarea:focus {
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
 .photo-editor textarea {
   min-height: 100px;
+  line-height: 1.6;
   resize: vertical;
 }
 
@@ -366,8 +479,9 @@ onBeforeUnmount(destroyLocationMap)
   height: 300px;
   margin-top: 10px;
   overflow: hidden;
+  border: 1px solid var(--tmr-border);
   border-radius: 10px;
-  background: #eef2f6;
+  background: var(--tmr-surface-soft);
 }
 
 .editor-actions {
@@ -378,9 +492,15 @@ onBeforeUnmount(destroyLocationMap)
 }
 
 .editor-actions .save-button {
-  border-color: #3565f3;
-  color: #ffffff;
-  background: #3565f3;
+  border-color: var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+}
+
+.editor-actions .save-button:hover {
+  border-color: var(--tmr-primary-dark);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary-dark);
 }
 
 @media (max-width: 760px) {
@@ -392,12 +512,23 @@ onBeforeUnmount(destroyLocationMap)
   .photo-modal {
     width: 100%;
     max-height: 92vh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
     border-radius: 16px 16px 0 0;
   }
 
-  .photo-modal-image { max-height: 52vh; }
-  .photo-modal-content { padding: 16px; }
-  .photo-location-map { height: 260px; }
+  .photo-modal-image {
+    max-height: 52vh;
+  }
+
+  .photo-modal-content {
+    padding: 16px;
+  }
+
+  .photo-location-map {
+    height: 260px;
+  }
 
   .photo-actions {
     flex-wrap: wrap;

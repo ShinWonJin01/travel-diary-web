@@ -38,10 +38,7 @@ const emit = defineEmits<{
             :src="participant.profileImageUrl"
             :alt="`${participant.nickname} 프로필`"
           />
-
-          <span v-else>
-            {{ participant.nickname.slice(0, 1) }}
-          </span>
+          <span v-else>{{ participant.nickname.slice(0, 1) }}</span>
         </span>
 
         <span
@@ -76,11 +73,11 @@ const emit = defineEmits<{
   margin-left: -8px;
   place-items: center;
   overflow: hidden;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--tmr-surface);
   border-radius: 50%;
   font-size: 10px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--tmr-surface);
 }
 
 .participant-avatar:first-child {
@@ -94,20 +91,20 @@ const emit = defineEmits<{
 }
 
 .avatar-blue {
-  background: #6f91c1;
+  background: var(--tmr-primary);
 }
 
 .avatar-green {
-  background: #72a584;
+  background: #63ad9a;
 }
 
 .avatar-orange {
-  background: #c88d61;
+  background: var(--tmr-accent);
 }
 
 .remaining-avatar {
-  color: #5e6b7a;
-  background: #eef1f5;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
 @media (max-width: 760px) {
@@ -118,9 +115,9 @@ const emit = defineEmits<{
     gap: 10px;
     margin-bottom: 10px;
     padding: 10px 12px;
-    border: 1px solid #e6eaf2;
+    border: 1px solid var(--tmr-border);
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--tmr-surface);
   }
 
   .mobile-participant-summary {
@@ -135,7 +132,6 @@ const emit = defineEmits<{
     color: inherit;
     text-align: left;
     background: transparent;
-    cursor: pointer;
   }
 
   .mobile-participant-label {
@@ -143,12 +139,12 @@ const emit = defineEmits<{
     flex-direction: column;
     gap: 3px;
     font-size: 8px;
-    color: #8c95a1;
+    color: var(--tmr-text-sub);
   }
 
   .mobile-participant-label strong {
     font-size: 10px;
-    color: #343c48;
+    color: var(--tmr-text);
   }
 
   .mobile-participant-avatars {
@@ -167,13 +163,24 @@ const emit = defineEmits<{
     height: 32px;
     flex: 0 0 auto;
     padding: 0 11px;
-    border: 1px solid #cfdaff;
+    border: 1px solid var(--tmr-border);
     border-radius: 8px;
     font-size: 9px;
     font-weight: 700;
-    color: #315fe8;
-    background: #eef3ff;
-    cursor: pointer;
+    color: var(--tmr-primary);
+    background: var(--tmr-surface-soft);
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease;
+  }
+
+  .mobile-invite-button:hover {
+    border-color: var(--tmr-primary);
+    background: color-mix(
+      in srgb,
+      var(--tmr-primary) 12%,
+      var(--tmr-surface)
+    );
   }
 }
 </style>

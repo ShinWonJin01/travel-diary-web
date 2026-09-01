@@ -8,7 +8,7 @@ import {
 import { ApiError } from '@/api/http'
 
 const emit = defineEmits<{
-  (e: 'select', location: LocationSearchResult): void
+  select: [location: LocationSearchResult]
 }>()
 
 const searchQuery = ref('')
@@ -17,7 +17,23 @@ const isSearching = ref(false)
 const searchError = ref('')
 const hasSearched = ref(false)
 
-async function handleSearch() {
+const getSearchErrorMessage = (error: unknown) => {
+  if (!(error instanceof ApiError)) {
+    return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+  }
+
+  if (error.status === 401) {
+    return '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.'
+  }
+
+  if (error.status >= 500) {
+    return '장소 검색 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+  }
+
+  return '장소 검색에 실패했습니다. 다시 시도해 주세요.'
+}
+
+const handleSearch = async () => {
   const query = searchQuery.value.trim()
 
   if (!query) {
@@ -27,42 +43,28 @@ async function handleSearch() {
     return
   }
 
-  try {
-    isSearching.value = true
-    searchError.value = ''
-    hasSearched.value = true
+  isSearching.value = true
+  searchError.value = ''
+  hasSearched.value = true
 
+  try {
     searchResults.value = await searchLocations(query)
   } catch (error) {
     console.error('장소 검색 실패:', error)
 
     searchResults.value = []
-
-    if (error instanceof ApiError) {
-      if (error.status === 401) {
-        searchError.value =
-          '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.'
-      } else if (error.status >= 500) {
-        searchError.value =
-          '장소 검색 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.'
-      } else {
-        searchError.value =
-          '장소 검색에 실패했습니다. 다시 시도해 주세요.'
-      }
-    } else {
-      searchError.value =
-        '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'
-    }
+    searchError.value = getSearchErrorMessage(error)
   } finally {
     isSearching.value = false
   }
 }
 
-function selectLocation(location: LocationSearchResult) {
+const selectLocation = (location: LocationSearchResult) => {
   emit('select', location)
 
   searchQuery.value = location.name
   searchResults.value = []
+  searchError.value = ''
   hasSearched.value = false
 }
 </script>
@@ -79,6 +81,7 @@ function selectLocation(location: LocationSearchResult) {
         type="text"
         placeholder="장소명이나 주소를 입력하세요"
         autocomplete="off"
+        aria-label="장소 검색"
       />
 
       <button
@@ -92,7 +95,8 @@ function selectLocation(location: LocationSearchResult) {
 
     <div
       v-if="searchError"
-      class="location-search-message"
+      class="location-search-message error"
+      role="alert"
     >
       {{ searchError }}
     </div>
@@ -103,7 +107,8 @@ function selectLocation(location: LocationSearchResult) {
         !isSearching &&
         searchResults.length === 0
       "
-      class="location-search-message"
+      class="location-search-message empty"
+      role="status"
     >
       검색 결과가 없습니다.
     </div>
@@ -148,49 +153,74 @@ function selectLocation(location: LocationSearchResult) {
 }
 
 .location-search-input {
-  flex: 1;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid #d7d7d7;
+  height: 42px;
+  flex: 1;
+  padding: 0 12px;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
-  font-size: 14px;
   outline: none;
+  font-size: 13px;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.location-search-input::placeholder {
+  color: var(--tmr-text-sub);
 }
 
 .location-search-input:focus {
-  border-color: #888;
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
 .location-search-button {
+  height: 42px;
   flex-shrink: 0;
-  padding: 10px 16px;
-  border: 1px solid #d7d7d7;
+  padding: 0 16px;
+  border: 1px solid var(--tmr-primary);
   border-radius: 8px;
-  background: #fff;
-  color: #303743;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tmr-surface);
   white-space: nowrap;
-  cursor: pointer;
+  background: var(--tmr-primary);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.location-search-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary-dark);
+  background: var(--tmr-primary-dark);
+}
+
+.location-search-button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .location-search-button:disabled {
-  cursor: default;
+  cursor: not-allowed;
   opacity: 0.6;
 }
 
 .location-search-results {
+  overflow: hidden;
   margin: 8px 0 0;
   padding: 0;
-  list-style: none;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
-  overflow: hidden;
+  list-style: none;
+  background: var(--tmr-surface);
 }
 
 .location-search-results li + li {
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--tmr-border);
 }
 
 .location-search-result {
@@ -200,31 +230,87 @@ function selectLocation(location: LocationSearchResult) {
   gap: 3px;
   padding: 10px 12px;
   border: 0;
-  background: #fff;
   text-align: left;
-  cursor: pointer;
-}
-
-.location-search-result-name {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.4;
-  color: #303743;
-}
-
-.location-search-result-address {
-  font-size: 11px;
-  line-height: 1.4;
-  color: #8a92a0;
+  background: var(--tmr-surface);
+  transition: background 0.2s ease;
 }
 
 .location-search-result:hover {
-  background: #f7f7f7;
+  background: var(--tmr-surface-soft);
+}
+
+.location-search-result-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--tmr-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-search-result-address {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--tmr-text-sub);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .location-search-message {
   margin-top: 8px;
-  font-size: 13px;
-  color: #666;
+  padding: 9px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.location-search-message.error {
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
+}
+
+.location-search-message.empty {
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+}
+
+@media (max-width: 760px) {
+  .location-search-form {
+    gap: 6px;
+  }
+
+  .location-search-input,
+  .location-search-button {
+    height: 38px;
+  }
+
+  .location-search-input {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .location-search-button {
+    padding: 0 12px;
+    font-size: 10px;
+  }
+
+  .location-search-result {
+    padding: 9px 10px;
+  }
+
+  .location-search-result-name {
+    font-size: 11px;
+  }
+
+  .location-search-result-address {
+    font-size: 9px;
+  }
+
+  .location-search-message {
+    padding: 8px 9px;
+    font-size: 9px;
+  }
 }
 </style>

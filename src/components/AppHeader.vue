@@ -7,6 +7,7 @@ import {
   logout as clearStoredLogin,
   type Member,
 } from '@/api/auth'
+import travelStoryLogo from '@/assets/images/travel-story-logo.png'
 import { getTripDetail } from '@/api/trips'
 import useNotifications from '@/composables/notifications/useNotifications'
 
@@ -27,13 +28,11 @@ const {
   toggleNotificationPopup,
   closeNotificationPopup,
   markAllAsRead,
+  markAsRead,
   openNotification,
 } = useNotifications(currentMember)
 
-const memberNickname = computed(
-  () => currentMember.value?.nickname ?? '마이페이지',
-)
-
+const memberNickname = computed(() => currentMember.value?.nickname ?? '마이페이지')
 const isHomePage = computed(() => route.name === 'home')
 const isTripsPage = computed(() => route.name === 'trips')
 const isTripDetailPage = computed(() => route.name === 'trip-detail')
@@ -51,7 +50,7 @@ const mobileTitle = computed(() => {
     case 'trip-detail':
       return tripDetailTitle.value
     default:
-      return '공동 여행기록장'
+      return 'Travel Story'
   }
 })
 
@@ -61,10 +60,7 @@ const loadTripDetailTitle = async () => {
     return
   }
 
-  const routeId = Array.isArray(route.params.id)
-    ? route.params.id[0]
-    : route.params.id
-
+  const routeId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
   const tripId = Number(routeId)
 
   if (!Number.isInteger(tripId) || tripId <= 0) {
@@ -82,14 +78,9 @@ const loadTripDetailTitle = async () => {
 
 const closeNotificationOnOutsideClick = (event: MouseEvent) => {
   const target = event.target
-
   if (!(target instanceof Element)) return
 
-  const clickedInsideNotification = target.closest(
-    '.notification-wrapper, .mobile-notification-wrapper',
-  )
-
-  if (!clickedInsideNotification) {
+  if (!target.closest('.notification-wrapper, .mobile-notification-wrapper')) {
     closeNotificationPopup()
   }
 }
@@ -107,12 +98,11 @@ const goToCreateTrip = () => {
   void router.push('/trips/create')
 }
 
-const handleLogout = async () => {
+const handleLogout = () => {
   clearStoredLogin()
   currentMember.value = null
   closeNotificationPopup()
-
-  await router.replace('/login')
+  void router.replace('/login')
 }
 
 watch(
@@ -124,7 +114,7 @@ watch(
 )
 
 watch(
-  () => [route.name, route.params.id],
+  [() => route.name, () => route.params.id],
   () => {
     void loadTripDetailTitle()
   },
@@ -142,14 +132,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- PC 헤더 -->
   <header class="desktop-header">
     <RouterLink class="brand" to="/">
-      <span class="brand-symbol">
-        <span></span>
-        <span></span>
-      </span>
-      <strong>공동 여행기록장</strong>
+      <img
+        :src="travelStoryLogo"
+        alt="Travel Story"
+        class="brand-logo"
+      />
     </RouterLink>
 
     <nav class="desktop-navigation">
@@ -181,6 +170,7 @@ onBeforeUnmount(() => {
           :notifications="notifications"
           :unread-count="unreadCount"
           @mark-all-read="markAllAsRead"
+          @mark-read="markAsRead"
           @open="openNotification"
         />
       </div>
@@ -197,21 +187,14 @@ onBeforeUnmount(() => {
     </div>
   </header>
 
-  <!-- 모바일 상단 헤더 -->
   <header
     class="mobile-header"
     :class="{ 'trip-detail-header': isTripDetailPage }"
   >
-    <button
+    <span
       v-if="isHomePage"
-      class="mobile-header-button"
-      type="button"
-      aria-label="전체 메뉴 열기"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 7h16M4 12h16M4 17h16" />
-      </svg>
-    </button>
+      class="mobile-header-side"
+    ></span>
 
     <button
       v-else
@@ -225,7 +208,20 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
-    <strong class="mobile-header-title">
+    <RouterLink
+      v-if="isHomePage"
+      class="mobile-brand"
+      to="/"
+      aria-label="Travel Story 홈"
+    >
+      <img
+        :src="travelStoryLogo"
+        alt="Travel Story"
+        class="mobile-brand-logo"
+      />
+    </RouterLink>
+
+    <strong v-else class="mobile-header-title">
       {{ mobileTitle }}
     </strong>
 
@@ -252,6 +248,7 @@ onBeforeUnmount(() => {
         :notifications="notifications"
         :unread-count="unreadCount"
         @mark-all-read="markAllAsRead"
+        @mark-read="markAsRead"
         @open="openNotification"
       />
     </div>
@@ -275,54 +272,33 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* =========================
-   PC 헤더
-========================= */
 .desktop-header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   height: 76px;
   padding: 0 48px;
-  border-bottom: 1px solid #e6ebf1;
-  background: #ffffff;
+  border-bottom: 1px solid var(--tmr-border);
+  background: var(--tmr-surface);
 }
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: 12px;
   width: fit-content;
-  color: #6b89ad;
+  align-items: center;
 }
 
-.brand strong {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.brand-symbol {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 28px;
-}
-
-.brand-symbol span {
-  height: 9px;
-  border-radius: 10px;
-  background: #d5e0ec;
-}
-
-.brand-symbol span:last-child {
-  width: 20px;
+.brand-logo {
+  width: 160px;
+  height: auto;
+  object-fit: contain;
 }
 
 .desktop-navigation {
   display: flex;
+  height: 100%;
   align-items: stretch;
   gap: 92px;
-  height: 100%;
 }
 
 .desktop-navigation a {
@@ -331,12 +307,12 @@ onBeforeUnmount(() => {
   align-items: center;
   font-size: 14px;
   font-weight: 500;
-  color: #536477;
+  color: var(--tmr-text-sub);
 }
 
 .desktop-navigation a:hover,
 .desktop-navigation a.router-link-exact-active {
-  color: #3157e8;
+  color: var(--tmr-primary);
 }
 
 .desktop-navigation a.router-link-exact-active::after {
@@ -346,7 +322,7 @@ onBeforeUnmount(() => {
   left: 0;
   height: 3px;
   border-radius: 3px 3px 0 0;
-  background: #3157e8;
+  background: var(--tmr-primary);
   content: '';
 }
 
@@ -365,41 +341,42 @@ onBeforeUnmount(() => {
 
 .mypage-button {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-width: 84px;
   max-width: 150px;
   height: 42px;
+  align-items: center;
+  justify-content: center;
   padding: 0 18px;
   overflow: hidden;
   border-radius: 24px;
   font-size: 13px;
-  color: #ffffff;
+  color: var(--tmr-surface);
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: #4e6688;
+  background: var(--tmr-primary-dark);
+}
+
+.mypage-button:hover {
+  background: var(--tmr-primary);
 }
 
 .logout-button {
   height: 42px;
   padding: 0 16px;
-  border: 1px solid #d7e0ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 24px;
   font-size: 12px;
   font-weight: 600;
-  color: #536477;
-  background: #ffffff;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .logout-button:hover {
-  border-color: #b8c5d4;
-  background: #f6f8fb;
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary-dark);
+  background: var(--tmr-surface-soft);
 }
 
-/* =========================
-   알림 버튼
-========================= */
 .notification-wrapper,
 .mobile-notification-wrapper {
   position: relative;
@@ -414,9 +391,8 @@ onBeforeUnmount(() => {
   place-items: center;
   padding: 0;
   border: 0;
-  color: #27364a;
+  color: var(--tmr-text);
   background: transparent;
-  cursor: pointer;
 }
 
 .notification-button svg,
@@ -440,22 +416,18 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--tmr-surface);
   border-radius: 10px;
   font-size: 8px;
   font-weight: 700;
-  color: #ffffff;
-  background: #ff4058;
+  color: var(--tmr-surface);
+  background: var(--tmr-accent);
 }
 
-/* PC에서는 모바일 헤더 숨김 */
 .mobile-header {
   display: none;
 }
 
-/* =========================
-   모바일
-========================= */
 @media (max-width: 760px) {
   .desktop-header {
     display: none;
@@ -464,11 +436,11 @@ onBeforeUnmount(() => {
   .mobile-header {
     display: grid;
     grid-template-columns: 36px minmax(0, 1fr) 36px;
-    align-items: center;
     height: 58px;
+    align-items: center;
     padding: 0 17px;
-    border-bottom: 1px solid #eef1f5;
-    background: #ffffff;
+    border-bottom: 1px solid var(--tmr-border);
+    background: var(--tmr-surface);
   }
 
   .mobile-header.trip-detail-header {
@@ -476,12 +448,23 @@ onBeforeUnmount(() => {
     padding: 0 12px;
   }
 
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-brand-logo {
+    width: 110px;
+    height: auto;
+    object-fit: contain;
+  }
+
   .mobile-header-title {
     overflow: hidden;
-    margin: 0;
     font-size: 15px;
     font-weight: 700;
-    color: #202734;
+    color: var(--tmr-text);
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -499,9 +482,8 @@ onBeforeUnmount(() => {
     justify-content: center;
     padding: 0;
     border: 0;
-    color: #27364a;
+    color: var(--tmr-text);
     background: transparent;
-    cursor: pointer;
   }
 
   .mobile-header-button svg {

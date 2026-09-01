@@ -15,6 +15,9 @@ const emit = defineEmits<{
   delete: []
   'toggle-selection': []
 }>()
+
+const hasPhotoMenu = (photo: PhotoItem) =>
+  photo.canEditMemo || photo.canEditLocation || photo.canDelete
 </script>
 
 <template>
@@ -30,17 +33,12 @@ const emit = defineEmits<{
     />
 
     <button
-      v-if="
-        !isSelectionMode &&
-        (
-          photo.canEditMemo ||
-          photo.canEditLocation ||
-          photo.canDelete
-        )
-      "
+      v-if="!isSelectionMode && hasPhotoMenu(photo)"
       class="photo-menu-button"
       type="button"
       :aria-label="`${photo.title} 메뉴`"
+      aria-haspopup="menu"
+      :aria-expanded="isMenuOpen"
       @click.stop="emit('toggle-menu')"
     >
       ⋯
@@ -49,10 +47,12 @@ const emit = defineEmits<{
     <div
       v-if="!isSelectionMode && isMenuOpen"
       class="photo-menu"
+      role="menu"
       @click.stop
     >
       <button
         type="button"
+        role="menuitem"
         @click="emit('edit')"
       >
         수정
@@ -62,6 +62,7 @@ const emit = defineEmits<{
         v-if="photo.canDelete"
         class="delete"
         type="button"
+        role="menuitem"
         @click="emit('delete')"
       >
         삭제
@@ -74,6 +75,7 @@ const emit = defineEmits<{
       :class="{ selected: isSelected }"
       type="button"
       :aria-label="`${photo.title} 선택`"
+      :aria-pressed="isSelected"
       @click.stop="emit('toggle-selection')"
     >
       <span v-if="isSelected">✓</span>
@@ -83,10 +85,7 @@ const emit = defineEmits<{
       <strong>{{ photo.title }}</strong>
       <span>{{ photo.location }}</span>
 
-      <p
-        v-if="photo.memo"
-        class="photo-memo-text"
-      >
+      <p v-if="photo.memo" class="photo-memo-text">
         {{ photo.memo }}
       </p>
     </div>
@@ -99,6 +98,7 @@ const emit = defineEmits<{
   height: 200px;
   overflow: hidden;
   border-radius: 14px;
+  background: var(--tmr-surface-soft);
   cursor: pointer;
 }
 
@@ -128,12 +128,12 @@ const emit = defineEmits<{
   font-size: 18px;
   line-height: 1;
   color: #ffffff;
-  background: rgba(20, 26, 36, 0.65);
-  cursor: pointer;
+  background: rgba(36, 48, 66, 0.68);
+  transition: background 0.2s ease;
 }
 
 .photo-menu-button:hover {
-  background: rgba(20, 26, 36, 0.85);
+  background: rgba(36, 48, 66, 0.88);
 }
 
 .photo-menu {
@@ -143,30 +143,35 @@ const emit = defineEmits<{
   z-index: 4;
   min-width: 80px;
   overflow: hidden;
-  border: 1px solid #e1e5ec;
+  padding: 4px;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 6px 18px rgba(20, 26, 36, 0.18);
+  background: var(--tmr-surface);
+  box-shadow: 0 6px 18px rgba(36, 48, 66, 0.16);
 }
 
 .photo-menu button {
   display: block;
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border: 0;
+  border-radius: 5px;
   font-size: 11px;
+  color: var(--tmr-text);
   text-align: left;
-  color: #454d59;
-  background: #ffffff;
-  cursor: pointer;
+  background: transparent;
 }
 
 .photo-menu button:hover {
-  background: #f5f7fa;
+  background: var(--tmr-surface-soft);
 }
 
 .photo-menu .delete {
-  color: #e5484d;
+  color: #d94b5b;
+}
+
+.photo-menu .delete:hover {
+  background: #fff1f3;
 }
 
 .photo-select-check {
@@ -183,19 +188,21 @@ const emit = defineEmits<{
   font-size: 14px;
   font-weight: 800;
   color: #ffffff;
-  background: rgba(20, 26, 36, 0.4);
-  cursor: pointer;
+  background: rgba(36, 48, 66, 0.45);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .photo-select-check.selected {
-  border-color: #405bf4;
-  background: #405bf4;
+  border-color: var(--tmr-primary);
+  background: var(--tmr-primary);
 }
 
 .photo-card-selected::after {
   position: absolute;
   inset: 0;
-  border: 3px solid #405bf4;
+  border: 3px solid var(--tmr-primary);
   border-radius: inherit;
   content: '';
   pointer-events: none;
@@ -216,14 +223,20 @@ const emit = defineEmits<{
 
 .photo-overlay strong {
   display: block;
+  overflow: hidden;
   font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .photo-overlay > span {
   display: block;
+  overflow: hidden;
   margin-top: 5px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.82);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .photo-memo-text {
@@ -255,7 +268,7 @@ const emit = defineEmits<{
   }
 
   .photo-menu button {
-    padding: 7px 10px;
+    padding: 7px 9px;
     font-size: 10px;
   }
 

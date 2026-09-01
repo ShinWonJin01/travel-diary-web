@@ -1,8 +1,5 @@
 <script setup lang="ts">
-type TripFilter =
-  | 'all'
-  | 'owned'
-  | 'participating'
+type TripFilter = 'all' | 'owned' | 'participating'
 
 defineProps<{
   activeFilter: TripFilter
@@ -52,7 +49,7 @@ const handleFilterClick = (filter: TripFilter) => {
 .trip-filters {
   display: grid;
   grid-template-columns: repeat(3, 150px);
-  border-bottom: 1px solid #e5e9ef;
+  border-bottom: 1px solid var(--tmr-border);
 }
 
 .trip-filters button {
@@ -62,13 +59,16 @@ const handleFilterClick = (filter: TripFilter) => {
   border: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #9299a4;
+  color: var(--tmr-text-sub);
   background: transparent;
-  cursor: pointer;
+}
+
+.trip-filters button:hover {
+  color: var(--tmr-primary);
 }
 
 .trip-filters button.active {
-  color: #3264ed;
+  color: var(--tmr-primary);
 }
 
 .trip-filters button.active::after {
@@ -78,7 +78,7 @@ const handleFilterClick = (filter: TripFilter) => {
   left: 0;
   height: 3px;
   border-radius: 3px 3px 0 0;
-  background: #3264ed;
+  background: var(--tmr-primary);
   content: '';
 }
 

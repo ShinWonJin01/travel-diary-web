@@ -1,38 +1,26 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import {
-  deleteAccount,
-  logout,
-} from '@/api/auth'
+import { deleteAccount, logout } from '@/api/auth'
 import { ApiError } from '@/api/http'
 
 const router = useRouter()
-
-/* =========================
-   부모에게 보내는 이벤트
-========================= */
 
 const emit = defineEmits<{
   close: []
 }>()
 
-/* =========================
-   계정 관리 상태
-========================= */
-
 const isDeleteAccountFormOpen = ref(false)
-
 const deleteAccountPassword = ref('')
 const accountErrorMessage = ref('')
 
 const isLoggingOut = ref(false)
 const isDeletingAccount = ref(false)
 
-/* =========================
-   계정 관리 초기화
-========================= */
+const isBusy = computed(
+  () => isLoggingOut.value || isDeletingAccount.value,
+)
 
 const resetAccountModal = () => {
   isDeleteAccountFormOpen.value = false
@@ -40,33 +28,20 @@ const resetAccountModal = () => {
   accountErrorMessage.value = ''
 }
 
-/* =========================
-   모달 닫기
-========================= */
-
 const closeAccountModal = () => {
-  if (isLoggingOut.value || isDeletingAccount.value) {
-    return
-  }
+  if (isBusy.value) return
 
   resetAccountModal()
   emit('close')
 }
 
-/* =========================
-   로그아웃
-========================= */
-
 const handleLogout = async () => {
-  if (isLoggingOut.value || isDeletingAccount.value) {
-    return
-  }
+  if (isBusy.value) return
 
   isLoggingOut.value = true
 
   try {
     logout()
-
     emit('close')
 
     await router.replace('/login')
@@ -75,10 +50,6 @@ const handleLogout = async () => {
   }
 }
 
-/* =========================
-   회원 탈퇴 입력창
-========================= */
-
 const openDeleteAccountForm = () => {
   accountErrorMessage.value = ''
   deleteAccountPassword.value = ''
@@ -86,25 +57,18 @@ const openDeleteAccountForm = () => {
 }
 
 const closeDeleteAccountForm = () => {
-  if (isDeletingAccount.value) {
-    return
-  }
+  if (isDeletingAccount.value) return
 
   isDeleteAccountFormOpen.value = false
   deleteAccountPassword.value = ''
   accountErrorMessage.value = ''
 }
 
-/* =========================
-   회원 탈퇴
-========================= */
-
 const submitDeleteAccount = async () => {
   accountErrorMessage.value = ''
 
   if (!deleteAccountPassword.value) {
-    accountErrorMessage.value =
-      '현재 비밀번호를 입력해 주세요.'
+    accountErrorMessage.value = '현재 비밀번호를 입력해 주세요.'
     return
   }
 
@@ -112,9 +76,7 @@ const submitDeleteAccount = async () => {
     '정말 회원 탈퇴를 진행하시겠습니까?\n\n계정과 내가 만든 여행, 참여 및 초대 정보가 삭제되며 복구할 수 없습니다.',
   )
 
-  if (!confirmed) {
-    return
-  }
+  if (!confirmed) return
 
   isDeletingAccount.value = true
 
@@ -155,15 +117,14 @@ const submitDeleteAccount = async () => {
       <header class="account-modal-header">
         <div>
           <p>ACCOUNT</p>
-          <h2 id="account-modal-title">
-            계정 관리
-          </h2>
+          <h2 id="account-modal-title">계정 관리</h2>
         </div>
 
         <button
           class="account-modal-close"
           type="button"
           aria-label="계정 관리 창 닫기"
+          :disabled="isBusy"
           @click="closeAccountModal"
         >
           ×
@@ -171,7 +132,6 @@ const submitDeleteAccount = async () => {
       </header>
 
       <div class="account-management-list">
-        <!-- 로그아웃 -->
         <section class="account-management-item">
           <div class="account-management-info">
             <strong>로그아웃</strong>
@@ -181,14 +141,13 @@ const submitDeleteAccount = async () => {
           <button
             class="logout-button"
             type="button"
-            :disabled="isLoggingOut || isDeletingAccount"
+            :disabled="isBusy"
             @click="handleLogout"
           >
             {{ isLoggingOut ? '로그아웃 중...' : '로그아웃' }}
           </button>
         </section>
 
-        <!-- 회원 탈퇴 -->
         <section class="account-management-item danger-item">
           <div class="account-management-info">
             <strong>회원 탈퇴</strong>
@@ -199,14 +158,13 @@ const submitDeleteAccount = async () => {
             v-if="!isDeleteAccountFormOpen"
             class="delete-account-open-button"
             type="button"
-            :disabled="isLoggingOut || isDeletingAccount"
+            :disabled="isBusy"
             @click="openDeleteAccountForm"
           >
             회원 탈퇴
           </button>
         </section>
 
-        <!-- 회원 탈퇴 확인 -->
         <form
           v-if="isDeleteAccountFormOpen"
           class="delete-account-form"
@@ -216,8 +174,8 @@ const submitDeleteAccount = async () => {
             <strong>탈퇴 전 확인해 주세요</strong>
 
             <p>
-              회원 탈퇴 시 계정과 내가 만든 여행, 참여 및 초대
-              정보가 삭제됩니다. 삭제된 정보는 복구할 수 없습니다.
+              회원 탈퇴 시 계정과 내가 만든 여행, 참여 및 초대 정보가
+              삭제됩니다. 삭제된 정보는 복구할 수 없습니다.
             </p>
           </div>
 
@@ -239,6 +197,7 @@ const submitDeleteAccount = async () => {
           <p
             v-if="accountErrorMessage"
             class="password-error-message"
+            role="alert"
           >
             {{ accountErrorMessage }}
           </p>
@@ -258,11 +217,7 @@ const submitDeleteAccount = async () => {
               type="submit"
               :disabled="isDeletingAccount"
             >
-              {{
-                isDeletingAccount
-                  ? '탈퇴 처리 중...'
-                  : '회원 탈퇴'
-              }}
+              {{ isDeletingAccount ? '탈퇴 처리 중...' : '회원 탈퇴' }}
             </button>
           </div>
         </form>
@@ -285,10 +240,13 @@ const submitDeleteAccount = async () => {
 
 .account-modal {
   width: min(460px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   padding: 24px;
+  border: 1px solid var(--tmr-border);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(26, 36, 53, 0.24);
+  background: var(--tmr-surface);
+  box-shadow: 0 24px 70px rgba(36, 48, 66, 0.22);
 }
 
 .account-modal-header {
@@ -303,13 +261,13 @@ const submitDeleteAccount = async () => {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #4566e8;
+  color: var(--tmr-primary);
 }
 
 .account-modal-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #222934;
+  color: var(--tmr-text);
 }
 
 .account-modal-close {
@@ -320,32 +278,40 @@ const submitDeleteAccount = async () => {
   border-radius: 9px;
   font-size: 23px;
   line-height: 1;
-  color: #747e8c;
-  background: #f3f5f8;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.account-modal-close:hover:not(:disabled) {
+  color: var(--tmr-primary);
+  background: var(--tmr-background);
 }
 
 .account-management-list {
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   margin-top: 24px;
-  overflow: hidden;
-  border: 1px solid #e4e8ee;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
+  background: var(--tmr-surface);
 }
 
 .account-management-item {
   display: flex;
+  min-height: 76px;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  min-height: 76px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .account-management-item + .account-management-item {
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid var(--tmr-border);
 }
 
 .account-management-info {
@@ -358,50 +324,49 @@ const submitDeleteAccount = async () => {
 
 .account-management-info strong {
   font-size: 13px;
-  color: #28313d;
+  color: var(--tmr-text);
 }
 
 .account-management-info span {
   font-size: 10px;
   line-height: 1.5;
-  color: #939ca8;
+  color: var(--tmr-text-sub);
 }
 
 .logout-button,
 .delete-account-open-button {
-  flex-shrink: 0;
   height: 36px;
+  flex-shrink: 0;
   padding: 0 13px;
   border-radius: 8px;
   font-size: 10px;
   font-weight: 700;
-  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .logout-button {
-  border: 1px solid #dce2ea;
-  color: #586575;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
 }
 
-.logout-button:hover {
-  background: #f6f8fa;
+.logout-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .delete-account-open-button {
   border: 1px solid #efcbd0;
-  color: #c94b59;
+  color: #d94b5b;
   background: #fffafa;
 }
 
-.delete-account-open-button:hover {
-  background: #fff2f3;
-}
-
-.logout-button:disabled,
-.delete-account-open-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+.delete-account-open-button:hover:not(:disabled) {
+  border-color: #e5a0aa;
+  background: #fff1f3;
 }
 
 .danger-item {
@@ -413,22 +378,22 @@ const submitDeleteAccount = async () => {
   flex-direction: column;
   gap: 15px;
   padding: 17px;
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid #efcbd0;
   background: #fffafa;
 }
 
 .delete-account-warning {
   padding: 13px;
-  border: 1px solid #f0d2d6;
+  border: 1px solid #efcbd0;
   border-radius: 9px;
-  background: #fff5f6;
+  background: #fff1f3;
 }
 
 .delete-account-warning strong {
   display: block;
   margin-bottom: 6px;
   font-size: 11px;
-  color: #b63e4d;
+  color: #d94b5b;
 }
 
 .delete-account-warning p {
@@ -437,8 +402,6 @@ const submitDeleteAccount = async () => {
   line-height: 1.65;
   color: #8b5c63;
 }
-
-/* 회원 탈퇴 비밀번호 입력 */
 
 .password-field {
   display: flex;
@@ -449,37 +412,49 @@ const submitDeleteAccount = async () => {
 .password-field label {
   font-size: 11px;
   font-weight: 700;
-  color: #495362;
+  color: var(--tmr-text);
 }
 
 .password-field input {
   width: 100%;
   height: 44px;
   padding: 0 13px;
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 9px;
   outline: none;
-  box-sizing: border-box;
   font-size: 12px;
-  color: #2c3440;
-  background: #ffffff;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.password-field input::placeholder {
+  color: var(--tmr-text-sub);
 }
 
 .password-field input:focus {
-  border-color: #5878e9;
-  box-shadow: 0 0 0 3px rgba(88, 120, 233, 0.11);
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
 .password-field input:disabled {
-  background: #f5f6f8;
   cursor: not-allowed;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
 .password-error-message {
   margin: -3px 0 0;
+  padding: 9px 10px;
+  border-radius: 7px;
   font-size: 10px;
   line-height: 1.5;
-  color: #c74658;
+  color: #d94b5b;
+  background: #fff1f3;
 }
 
 .delete-account-actions {
@@ -495,34 +470,48 @@ const submitDeleteAccount = async () => {
   border-radius: 9px;
   font-size: 10px;
   font-weight: 700;
-  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .delete-account-cancel-button {
-  border: 1px solid #dce2ea;
-  color: #66717f;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+}
+
+.delete-account-cancel-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .delete-account-submit-button {
-  border: 0;
+  border: 1px solid #d94b5b;
   color: #ffffff;
-  background: #d94b5a;
+  background: #d94b5b;
 }
 
-.delete-account-submit-button:hover {
-  background: #c83d4c;
+.delete-account-submit-button:hover:not(:disabled) {
+  border-color: #c83c4c;
+  background: #c83c4c;
 }
 
+.delete-account-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.account-modal-close:disabled,
+.logout-button:disabled,
+.delete-account-open-button:disabled,
 .delete-account-cancel-button:disabled,
 .delete-account-submit-button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
-
-/* =========================
-   모바일
-========================= */
 
 @media (max-width: 760px) {
   .account-modal-backdrop {
@@ -532,7 +521,11 @@ const submitDeleteAccount = async () => {
 
   .account-modal {
     width: 100%;
+    max-height: 90vh;
     padding: 20px 17px 24px;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
     border-radius: 18px 18px 0 0;
   }
 
@@ -545,8 +538,8 @@ const submitDeleteAccount = async () => {
   }
 
   .account-management-item {
-    gap: 12px;
     min-height: 72px;
+    gap: 12px;
     padding: 14px;
   }
 
@@ -579,8 +572,8 @@ const submitDeleteAccount = async () => {
 
   .delete-account-cancel-button,
   .delete-account-submit-button {
-    flex: 1;
     height: 42px;
+    flex: 1;
   }
 }
 </style>

@@ -50,7 +50,13 @@ const clearObjectUrl = () => {
 }
 
 watch(
-  () => [props.title, props.destination, props.startDate, props.endDate, props.description],
+  [
+    () => props.title,
+    () => props.destination,
+    () => props.startDate,
+    () => props.endDate,
+    () => props.description,
+  ],
   () => {
     form.title = props.title
     form.destination = props.destination
@@ -65,6 +71,7 @@ watch(
   () => props.coverImageUrl,
   () => {
     clearObjectUrl()
+
     coverImageFile.value = null
     removeCoverImage.value = false
     coverPreviewUrl.value = props.coverImageUrl ?? null
@@ -128,8 +135,8 @@ onBeforeUnmount(clearObjectUrl)
         </div>
 
         <button
-          type="button"
           class="trip-edit-close"
+          type="button"
           aria-label="닫기"
           :disabled="isSaving"
           @click="emit('close')"
@@ -170,8 +177,8 @@ onBeforeUnmount(clearObjectUrl)
             />
 
             <button
-              type="button"
               class="trip-edit-cover-change"
+              type="button"
               :disabled="isSaving"
               @click="openCoverImagePicker"
             >
@@ -180,8 +187,8 @@ onBeforeUnmount(clearObjectUrl)
 
             <button
               v-if="coverPreviewUrl"
-              type="button"
               class="trip-edit-cover-remove"
+              type="button"
               :disabled="isSaving"
               @click="handleRemoveCoverImage"
             >
@@ -215,12 +222,20 @@ onBeforeUnmount(clearObjectUrl)
         <div class="trip-edit-date-row">
           <label>
             <span>시작일</span>
-            <input v-model="form.startDate" type="date" :disabled="isSaving" />
+            <input
+              v-model="form.startDate"
+              type="date"
+              :disabled="isSaving"
+            />
           </label>
 
           <label>
             <span>종료일</span>
-            <input v-model="form.endDate" type="date" :disabled="isSaving" />
+            <input
+              v-model="form.endDate"
+              type="date"
+              :disabled="isSaving"
+            />
           </label>
         </div>
 
@@ -241,15 +256,19 @@ onBeforeUnmount(clearObjectUrl)
 
         <div class="trip-edit-actions">
           <button
-            type="button"
             class="trip-edit-cancel"
+            type="button"
             :disabled="isSaving"
             @click="emit('close')"
           >
             취소
           </button>
 
-          <button type="submit" class="trip-edit-save" :disabled="isSaving">
+          <button
+            class="trip-edit-save"
+            type="submit"
+            :disabled="isSaving"
+          >
             {{ isSaving ? '저장 중...' : '저장' }}
           </button>
         </div>
@@ -275,9 +294,10 @@ onBeforeUnmount(clearObjectUrl)
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   padding: 22px;
+  border: 1px solid var(--tmr-border);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(26, 36, 53, 0.24);
+  background: var(--tmr-surface);
+  box-shadow: 0 24px 70px rgba(36, 48, 66, 0.22);
 }
 
 .trip-edit-header {
@@ -292,13 +312,13 @@ onBeforeUnmount(clearObjectUrl)
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #4c6fea;
+  color: var(--tmr-primary);
 }
 
 .trip-edit-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #222a36;
+  color: var(--tmr-text);
 }
 
 .trip-edit-close {
@@ -309,8 +329,16 @@ onBeforeUnmount(clearObjectUrl)
   border-radius: 9px;
   font-size: 23px;
   line-height: 1;
-  color: #747e8c;
-  background: #f3f5f8;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.trip-edit-close:hover:not(:disabled) {
+  color: var(--tmr-primary);
+  background: var(--tmr-background);
 }
 
 .trip-edit-form {
@@ -328,19 +356,22 @@ onBeforeUnmount(clearObjectUrl)
 .trip-edit-label {
   font-size: 11px;
   font-weight: 700;
-  color: #495362;
+  color: var(--tmr-text);
 }
 
 .trip-edit-form input,
 .trip-edit-form textarea {
   width: 100%;
   padding: 0 12px;
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 9px;
   outline: none;
   font-size: 12px;
-  color: #2c3440;
-  background: #ffffff;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .trip-edit-form input {
@@ -351,16 +382,23 @@ onBeforeUnmount(clearObjectUrl)
   min-height: 120px;
   padding-top: 11px;
   padding-bottom: 11px;
+  line-height: 1.6;
   resize: vertical;
 }
 
 .trip-edit-form input:focus,
 .trip-edit-form textarea:focus {
-  border-color: #5878e9;
-  box-shadow: 0 0 0 3px rgba(88, 120, 233, 0.11);
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
-/* 대표 사진 */
+.trip-edit-form input:disabled,
+.trip-edit-form textarea:disabled {
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+}
+
 .trip-edit-cover {
   display: grid;
   gap: 7px;
@@ -369,9 +407,9 @@ onBeforeUnmount(clearObjectUrl)
 .trip-edit-cover-box {
   height: 150px;
   overflow: hidden;
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 10px;
-  background: #f7f9fb;
+  background: var(--tmr-surface-soft);
 }
 
 .trip-edit-cover-box img {
@@ -382,21 +420,21 @@ onBeforeUnmount(clearObjectUrl)
 
 .trip-edit-cover-empty {
   display: flex;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: #98a3b2;
+  color: var(--tmr-text-sub);
 }
 
 .trip-edit-cover-empty svg {
   width: 28px;
   height: 28px;
   fill: none;
-  stroke: #9ba8b8;
-  stroke-width: 1.5;
+  stroke: var(--tmr-primary);
   stroke-linecap: round;
   stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .trip-edit-cover-empty p {
@@ -416,18 +454,36 @@ onBeforeUnmount(clearObjectUrl)
   border-radius: 8px;
   font-size: 10px;
   font-weight: 700;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .trip-edit-cover-change {
-  border: 1px solid #d9e1f8;
-  color: #4265dc;
-  background: #f6f8ff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+}
+
+.trip-edit-cover-change:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  background: color-mix(
+    in srgb,
+    var(--tmr-primary) 12%,
+    var(--tmr-surface)
+  );
 }
 
 .trip-edit-cover-remove {
-  border: 1px solid #e5e8ed;
-  color: #737e8c;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: #d94b5b;
+  background: var(--tmr-surface);
+}
+
+.trip-edit-cover-remove:hover:not(:disabled) {
+  border-color: #e5a0aa;
+  background: #fff1f3;
 }
 
 .trip-edit-date-row {
@@ -438,8 +494,12 @@ onBeforeUnmount(clearObjectUrl)
 
 .trip-edit-error {
   margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--tmr-accent);
+  border-radius: 8px;
   font-size: 10px;
-  color: #c74658;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
 }
 
 .trip-edit-actions {
@@ -455,18 +515,38 @@ onBeforeUnmount(clearObjectUrl)
   border-radius: 9px;
   font-size: 11px;
   font-weight: 700;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .trip-edit-cancel {
-  border: 1px solid #dfe4eb;
-  color: #5d6877;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+}
+
+.trip-edit-cancel:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .trip-edit-save {
-  border: 0;
-  color: #ffffff;
-  background: #3565ef;
+  border: 1px solid var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+}
+
+.trip-edit-save:hover:not(:disabled) {
+  border-color: var(--tmr-primary-dark);
+  background: var(--tmr-primary-dark);
+}
+
+.trip-edit-actions button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .trip-edit-actions button:disabled,
@@ -486,6 +566,9 @@ onBeforeUnmount(clearObjectUrl)
     width: 100%;
     max-height: 88vh;
     padding: 18px 17px 22px;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
     border-radius: 18px 18px 0 0;
   }
 

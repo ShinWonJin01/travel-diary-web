@@ -11,12 +11,6 @@ import {
   type Trip,
 } from '@/api/trips'
 
-import { useTripAiDiary } from '@/composables/trips/useTripAiDiary'
-import { useTripImages } from '@/composables/trips/useTripImages'
-import { useTripManagement } from '@/composables/trips/useTripManagement'
-import { useTripParticipants } from '@/composables/trips/useTripParticipants'
-import { useTripPhotos } from '@/composables/trips/useTripPhotos'
-
 import ParticipantManagementModal from '@/components/trips/detail/ParticipantManagementModal.vue'
 import TripAiDiaryTab from '@/components/trips/detail/TripAiDiaryTab.vue'
 import TripDetailSidebar from '@/components/trips/detail/TripDetailSidebar.vue'
@@ -27,7 +21,14 @@ import TripOverviewTab from '@/components/trips/detail/TripOverviewTab.vue'
 import TripPhotosTab from '@/components/trips/detail/TripPhotosTab.vue'
 import TripTimelineTab from '@/components/trips/detail/TripTimelineTab.vue'
 
+import { useTripAiDiary } from '@/composables/trips/useTripAiDiary'
+import { useTripImages } from '@/composables/trips/useTripImages'
+import { useTripManagement } from '@/composables/trips/useTripManagement'
+import { useTripParticipants } from '@/composables/trips/useTripParticipants'
+import { useTripPhotos } from '@/composables/trips/useTripPhotos'
+
 type TripTab = 'overview' | 'timeline' | 'photos' | 'map' | 'ai-diary'
+
 type CurrentLocationResult =
   | {
       success: true
@@ -70,14 +71,10 @@ const tripId = computed<number | null>(() => {
 
   const parsedId = Number(routeId)
 
-  return Number.isInteger(parsedId) && parsedId > 0
-    ? parsedId
-    : null
+  return Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null
 })
 
-const isOwner = computed(
-  () => currentMember?.id === trip.value?.ownerId,
-)
+const isOwner = computed(() => currentMember?.id === trip.value?.ownerId)
 
 const {
   coverImageUrl,
@@ -162,39 +159,30 @@ const tripDescription = computed(() => trip.value?.description.trim() ?? '')
 const activeTab = computed<TripTab>(() => {
   const tab = route.query.tab
 
-  if (
-    typeof tab === 'string'
-    && validTabs.includes(tab as TripTab)
-  ) {
-    return tab as TripTab
-  }
-
-  return 'overview'
+  return typeof tab === 'string' && validTabs.includes(tab as TripTab)
+    ? (tab as TripTab)
+    : 'overview'
 })
 
 const showMobilePhotoButton = computed(() =>
   ['overview', 'timeline', 'photos'].includes(activeTab.value),
 )
 
-const formatDate = (date: string) => {
-  return date.replaceAll('-', '.')
-}
+const formatDate = (date: string) => date.replaceAll('-', '.')
 
 const toUtcTimestamp = (date: string) => {
   const [yearText, monthText, dayText] = date.split('-')
 
-  if (!yearText || !monthText || !dayText) {
-    return null
-  }
+  if (!yearText || !monthText || !dayText) return null
 
   const year = Number(yearText)
   const month = Number(monthText)
   const day = Number(dayText)
 
   if (
-    !Number.isInteger(year)
-    || !Number.isInteger(month)
-    || !Number.isInteger(day)
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
   ) {
     return null
   }
@@ -203,40 +191,27 @@ const toUtcTimestamp = (date: string) => {
 }
 
 const tripPeriod = computed(() => {
-  if (!trip.value) {
-    return ''
-  }
+  if (!trip.value) return ''
 
   const startDate = formatDate(trip.value.startDate)
 
-  if (!trip.value.endDate) {
-    return `${startDate} - 종료일 미정`
-  }
-
-  return `${startDate} - ${formatDate(trip.value.endDate)}`
+  return trip.value.endDate
+    ? `${startDate} - ${formatDate(trip.value.endDate)}`
+    : `${startDate} - 종료일 미정`
 })
 
 const tripDuration = computed(() => {
-  if (!trip.value) {
-    return ''
-  }
-
-  if (!trip.value.endDate) {
-    return '종료일 미정'
-  }
+  if (!trip.value) return ''
+  if (!trip.value.endDate) return '종료일 미정'
 
   const startTimestamp = toUtcTimestamp(trip.value.startDate)
   const endTimestamp = toUtcTimestamp(trip.value.endDate)
 
-  if (startTimestamp === null || endTimestamp === null) {
-    return '-'
-  }
+  if (startTimestamp === null || endTimestamp === null) return '-'
 
   const millisecondsPerDay = 24 * 60 * 60 * 1000
   const nights = Math.max(
-    Math.round(
-      (endTimestamp - startTimestamp) / millisecondsPerDay,
-    ),
+    Math.round((endTimestamp - startTimestamp) / millisecondsPerDay),
     0,
   )
 
@@ -268,12 +243,11 @@ const loadTrip = async () => {
   errorMessage.value = ''
 
   try {
-    const [tripDetail, participantItems, photoItems] =
-      await Promise.all([
-        getTripDetail(id),
-        getTripParticipants(id),
-        getTripPhotos(id),
-      ])
+    const [tripDetail, participantItems, photoItems] = await Promise.all([
+      getTripDetail(id),
+      getTripParticipants(id),
+      getTripPhotos(id),
+    ])
 
     trip.value = tripDetail
     tripParticipants.value = participantItems
@@ -284,7 +258,7 @@ const loadTrip = async () => {
       loadTripPhotoImageUrls(photoItems),
       loadParticipantProfileImageUrls(participantItems),
     ])
-  } catch (error: unknown) {
+  } catch (error) {
     resetTripState()
 
     errorMessage.value =
@@ -299,9 +273,7 @@ const loadTrip = async () => {
 const selectTab = (tab: TripTab) => {
   void router.replace({
     name: 'trip-detail',
-    params: {
-      id: route.params.id,
-    },
+    params: { id: route.params.id },
     query: tab === 'overview' ? {} : { tab },
   })
 }
@@ -310,22 +282,86 @@ const openPhotoUpload = () => {
   photoInputRef.value?.click()
 }
 
+const getCurrentLocation = () =>
+  new Promise<CurrentLocationResult>((resolve) => {
+    if (!window.isSecureContext) {
+      resolve({ success: false, reason: 'insecure' })
+      return
+    }
+
+    if (!navigator.geolocation) {
+      resolve({ success: false, reason: 'unsupported' })
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords
+
+        if (accuracy > 100) {
+          resolve({
+            success: false,
+            reason: 'low-accuracy',
+            accuracy,
+          })
+          return
+        }
+
+        resolve({
+          success: true,
+          latitude,
+          longitude,
+        })
+      },
+      (error) => {
+        if (error.code === 1) {
+          resolve({ success: false, reason: 'permission-denied' })
+          return
+        }
+
+        if (error.code === 2) {
+          resolve({ success: false, reason: 'unavailable' })
+          return
+        }
+
+        resolve({ success: false, reason: 'timeout' })
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    )
+  })
+
+const getLocationErrorMessage = (result: Extract<
+  CurrentLocationResult,
+  { success: false }
+>) => {
+  switch (result.reason) {
+    case 'insecure':
+      return '현재 개발 환경은 HTTP이므로 현재 위치를 사용할 수 없습니다.\nHTTPS 환경에서는 위치 기능을 사용할 수 있습니다.\n사진은 위치 정보 없이 등록됩니다.'
+    case 'permission-denied':
+      return '위치 권한이 허용되지 않았습니다.\n브라우저의 위치 권한을 확인해 주세요.\n사진은 위치 정보 없이 등록됩니다.'
+    case 'low-accuracy':
+      return `현재 위치의 정확도가 낮아 사용할 수 없습니다. (${Math.round(result.accuracy ?? 0)}m)\n사진은 위치 정보 없이 등록됩니다.`
+    case 'timeout':
+      return '현재 위치를 확인하는 데 시간이 너무 오래 걸렸습니다.\n사진은 위치 정보 없이 등록됩니다.'
+    default:
+      return '현재 위치를 가져올 수 없습니다.\n사진은 위치 정보 없이 등록됩니다.'
+  }
+}
+
 const handlePhotoSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement
-
-  if (!input.files?.length) {
-    return
-  }
+  if (!input.files?.length) return
 
   const files = Array.from(input.files)
 
   try {
     const uploadedPhotos = await uploadPhotos(files)
-
     const photosWithoutLocation = uploadedPhotos.filter(
-      (photo) =>
-        photo.latitude === null
-        || photo.longitude === null,
+      (photo) => photo.latitude === null || photo.longitude === null,
     )
 
     if (photosWithoutLocation.length > 0) {
@@ -348,24 +384,7 @@ const handlePhotoSelect = async (event: Event) => {
             )
           }
         } else {
-          let message =
-            '현재 위치를 가져올 수 없습니다.\n사진은 위치 정보 없이 등록됩니다.'
-
-          if (currentLocation.reason === 'insecure') {
-            message =
-              '현재 개발 환경은 HTTP이므로 현재 위치를 사용할 수 없습니다.\nHTTPS 환경에서는 위치 기능을 사용할 수 있습니다.\n사진은 위치 정보 없이 등록됩니다.'
-          } else if (currentLocation.reason === 'permission-denied') {
-            message =
-              '위치 권한이 허용되지 않았습니다.\n브라우저의 위치 권한을 확인해 주세요.\n사진은 위치 정보 없이 등록됩니다.'
-          } else if (currentLocation.reason === 'low-accuracy') {
-            message =
-              `현재 위치의 정확도가 낮아 사용할 수 없습니다. (${Math.round(currentLocation.accuracy ?? 0)}m)\n사진은 위치 정보 없이 등록됩니다.`
-          } else if (currentLocation.reason === 'timeout') {
-            message =
-              '현재 위치를 확인하는 데 시간이 너무 오래 걸렸습니다.\n사진은 위치 정보 없이 등록됩니다.'
-          }
-
-          window.alert(message)
+          window.alert(getLocationErrorMessage(currentLocation))
         }
       }
     }
@@ -377,7 +396,7 @@ const handlePhotoSelect = async (event: Event) => {
         ? '사진을 등록했습니다.'
         : `사진 ${files.length}장을 등록했습니다.`,
     )
-  } catch (error: unknown) {
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -388,93 +407,17 @@ const handlePhotoSelect = async (event: Event) => {
   }
 }
 
-const getCurrentLocation = () =>
-  new Promise<CurrentLocationResult>((resolve) => {
-    if (!window.isSecureContext) {
-      resolve({
-        success: false,
-        reason: 'insecure',
-      })
-      return
-    }
-
-    if (!navigator.geolocation) {
-      resolve({
-        success: false,
-        reason: 'unsupported',
-      })
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const {
-          latitude,
-          longitude,
-          accuracy,
-        } = position.coords
-
-        if (accuracy > 100) {
-          resolve({
-            success: false,
-            reason: 'low-accuracy',
-            accuracy,
-          })
-          return
-        }
-
-        resolve({
-          success: true,
-          latitude,
-          longitude,
-        })
-      },
-      (error) => {
-        if (error.code === 1) {
-          resolve({
-            success: false,
-            reason: 'permission-denied',
-          })
-          return
-        }
-
-        if (error.code === 2) {
-          resolve({
-            success: false,
-            reason: 'unavailable',
-          })
-          return
-        }
-
-        resolve({
-          success: false,
-          reason: 'timeout',
-        })
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    )
-  })
-
 const handleDeletePhotos = async (photoIds: number[]) => {
-  if (photoIds.length === 0) {
-    return
-  }
-
-  const confirmed = window.confirm(
-    `선택한 사진 ${photoIds.length}장을 삭제하시겠습니까?`,
-  )
-
-  if (!confirmed) {
+  if (
+    photoIds.length === 0 ||
+    !window.confirm(`선택한 사진 ${photoIds.length}장을 삭제하시겠습니까?`)
+  ) {
     return
   }
 
   try {
     await removePhotos(photoIds)
-  } catch (error: unknown) {
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -485,13 +428,10 @@ const handleDeletePhotos = async (photoIds: number[]) => {
   }
 }
 
-const handleUpdatePhotoMemo = async (
-  photoId: number,
-  memo: string,
-) => {
+const handleUpdatePhotoMemo = async (photoId: number, memo: string) => {
   try {
     await updatePhotoMemo(photoId, memo)
-  } catch (error: unknown) {
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -506,7 +446,7 @@ const handleUpdatePhotoTakenAt = async (
 ) => {
   try {
     await updatePhotoTakenAt(photoId, takenAt)
-  } catch (error: unknown) {
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -528,7 +468,7 @@ const handleUpdatePhotoLocation = async (
       longitude,
       locationName,
     )
-  } catch (error: unknown) {
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -538,23 +478,18 @@ const handleUpdatePhotoLocation = async (
 }
 
 const handleDeleteTrip = async () => {
-  const confirmed = window.confirm(
-    '여행을 삭제하시겠습니까?\n삭제한 여행은 복구할 수 없습니다.',
-  )
-
-  if (!confirmed) {
+  if (
+    !window.confirm(
+      '여행을 삭제하시겠습니까?\n삭제한 여행은 복구할 수 없습니다.',
+    )
+  ) {
     return
   }
 
   try {
     const deleted = await deleteCurrentTrip()
-
-    if (!deleted) {
-      return
-    }
-
-    await router.push('/trips')
-  } catch (error: unknown) {
+    if (deleted) await router.push('/trips')
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -564,23 +499,18 @@ const handleDeleteTrip = async () => {
 }
 
 const handleLeaveTrip = async () => {
-  const confirmed = window.confirm(
-    '이 여행에서 나가시겠습니까?\n나간 뒤에는 다시 초대를 받아야 참여할 수 있습니다.',
-  )
-
-  if (!confirmed) {
+  if (
+    !window.confirm(
+      '이 여행에서 나가시겠습니까?\n나간 뒤에는 다시 초대를 받아야 참여할 수 있습니다.',
+    )
+  ) {
     return
   }
 
   try {
     const left = await leaveCurrentTrip()
-
-    if (!left) {
-      return
-    }
-
-    await router.push('/trips')
-  } catch (error: unknown) {
+    if (left) await router.push('/trips')
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -592,7 +522,7 @@ const handleLeaveTrip = async () => {
 const handleGenerateAiDiary = async () => {
   try {
     await generateAiDiary()
-  } catch (error: unknown) {
+  } catch (error) {
     window.alert(
       error instanceof ApiError
         ? error.message
@@ -610,7 +540,7 @@ watch(
 )
 
 watch(
-  () => [tripId.value, trip.value?.coverImagePath],
+  [tripId, () => trip.value?.coverImagePath],
   () => {
     void loadCoverImage(trip.value?.coverImagePath)
   },
@@ -619,10 +549,7 @@ watch(
 
 <template>
   <main class="trip-detail-page">
-    <section
-      v-if="isLoading"
-      class="detail-state-card"
-    >
+    <section v-if="isLoading" class="detail-state-card">
       <span class="detail-state-spinner"></span>
       <p>여행 정보를 불러오는 중입니다.</p>
     </section>
@@ -631,18 +558,19 @@ watch(
       v-else-if="errorMessage"
       class="detail-state-card detail-error-card"
     >
+      <div class="detail-error-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v5M12 16.5v.5" />
+        </svg>
+      </div>
+
       <h1>여행 정보를 불러오지 못했습니다.</h1>
       <p>{{ errorMessage }}</p>
-
-      <button type="button" @click="loadTrip">
-        다시 시도
-      </button>
+      <button type="button" @click="loadTrip">다시 시도</button>
     </section>
 
-    <div
-      v-else-if="trip"
-      class="detail-layout"
-    >
+    <div v-else-if="trip" class="detail-layout">
       <TripDetailSidebar
         :trip-title="tripTitle"
         :active-tab="activeTab"
@@ -762,7 +690,7 @@ watch(
 .trip-detail-page {
   min-height: 100vh;
   padding: 24px 24px 80px;
-  background: #f6f7fb;
+  background: var(--tmr-background);
 }
 
 .detail-state-card {
@@ -775,10 +703,10 @@ watch(
   gap: 12px;
   margin: 48px auto 0;
   padding: 30px;
-  border: 1px solid #e6eaf2;
-  border-radius: 14px;
-  color: #687383;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  border-radius: 16px;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .detail-state-card p {
@@ -787,18 +715,39 @@ watch(
 }
 
 .detail-state-spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #dfe6f7;
-  border-top-color: #3464ee;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--tmr-surface-soft);
+  border-top-color: var(--tmr-primary);
   border-radius: 50%;
   animation: detail-spin 0.8s linear infinite;
 }
 
+.detail-error-icon {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
+}
+
+.detail-error-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
 .detail-error-card h1 {
-  margin: 0;
+  margin: 2px 0 0;
   font-size: 19px;
-  color: #252c37;
+  color: var(--tmr-text);
 }
 
 .detail-error-card button {
@@ -808,15 +757,19 @@ watch(
   border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
-  color: #ffffff;
-  background: #3464ee;
-  cursor: pointer;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
-@keyframes detail-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.detail-error-card button:hover {
+  background: var(--tmr-primary-dark);
+}
+
+.detail-error-card button:active {
+  transform: scale(0.98);
 }
 
 .detail-layout {
@@ -836,18 +789,23 @@ watch(
   display: none;
 }
 
+@keyframes detail-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 760px) {
   .trip-detail-page {
     min-height: calc(100vh - 52px);
     padding: 0 0 24px;
-    background: #f6f7fb;
   }
 
   .detail-state-card {
     min-height: 240px;
     margin: 18px 10px 0;
     padding: 22px 16px;
-    border-radius: 10px;
+    border-radius: 12px;
   }
 
   .detail-state-card p {
@@ -878,10 +836,15 @@ watch(
     border-radius: 20px;
     font-size: 11px;
     font-weight: 700;
-    color: #ffffff;
-    background: #3160ee;
-    box-shadow: 0 8px 20px rgba(49, 96, 238, 0.3);
-    cursor: pointer;
+    color: var(--tmr-surface);
+    background: var(--tmr-primary);
+    box-shadow: 0 8px 20px
+      color-mix(in srgb, var(--tmr-primary) 30%, transparent);
+  }
+
+  .mobile-floating-button:active {
+    background: var(--tmr-primary-dark);
+    transform: scale(0.97);
   }
 }
 </style>

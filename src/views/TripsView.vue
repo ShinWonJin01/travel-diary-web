@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import { getTrips, type TripListItem } from '@/api/trips'
 import TripFilters from '@/components/trips/TripFilters.vue'
 import TripListItemCard from '@/components/trips/TripListItem.vue'
-
-import {
-  getTrips,
-  type TripListItem,
-} from '@/api/trips'
 
 type TripFilter = 'all' | 'owned' | 'participating'
 
@@ -22,23 +18,18 @@ const errorMessage = ref('')
 const activeFilter = computed<TripFilter>(() => {
   const filter = route.query.filter
 
-  if (filter === 'owned' || filter === 'participating') {
-    return filter
-  }
-
-  return 'all'
+  return filter === 'owned' || filter === 'participating' ? filter : 'all'
 })
 
 const filteredTrips = computed(() => {
-  if (activeFilter.value === 'owned') {
-    return trips.value.filter((trip) => trip.role === 'OWNER')
+  switch (activeFilter.value) {
+    case 'owned':
+      return trips.value.filter((trip) => trip.role === 'OWNER')
+    case 'participating':
+      return trips.value.filter((trip) => trip.role === 'MEMBER')
+    default:
+      return trips.value
   }
-
-  if (activeFilter.value === 'participating') {
-    return trips.value.filter((trip) => trip.role === 'MEMBER')
-  }
-
-  return trips.value
 })
 
 const loadTrips = async () => {
@@ -75,57 +66,45 @@ onMounted(() => {
 
 <template>
   <section class="trips-page">
-    <!-- PC 화면 제목 -->
     <div class="desktop-page-heading">
       <div>
         <p>TRAVEL RECORDS</p>
         <h1>여행 기록</h1>
       </div>
 
-      <RouterLink
-        class="desktop-create-button"
-        to="/trips/create"
-      >
-        + 여행 만들기
+      <RouterLink class="desktop-create-button" to="/trips/create">
+        <span>+</span>
+        여행 만들기
       </RouterLink>
     </div>
 
-    <!-- 여행 필터 -->
     <TripFilters
       :active-filter="activeFilter"
       @change="changeFilter"
     />
 
-    <!-- 로딩 중 -->
-    <div
-      v-if="isLoading"
-      class="loading-state"
-      aria-live="polite"
-    >
-      여행 목록을 불러오는 중입니다.
+    <div v-if="isLoading" class="loading-state" aria-live="polite">
+      <div class="state-icon loading-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+      </div>
+      <p>여행 목록을 불러오는 중입니다.</p>
     </div>
 
-    <!-- 조회 오류 -->
-    <div
-      v-else-if="errorMessage"
-      class="error-state"
-      role="alert"
-    >
+    <div v-else-if="errorMessage" class="error-state" role="alert">
+      <div class="state-icon error-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v5M12 16.5v.5" />
+        </svg>
+      </div>
+
       <p>{{ errorMessage }}</p>
-
-      <button
-        type="button"
-        @click="loadTrips"
-      >
-        다시 불러오기
-      </button>
+      <button type="button" @click="loadTrips">다시 불러오기</button>
     </div>
 
-    <!-- 여행 목록 -->
-    <div
-      v-else-if="filteredTrips.length > 0"
-      class="trip-list"
-    >
+    <div v-else-if="filteredTrips.length > 0" class="trip-list">
       <TripListItemCard
         v-for="trip in filteredTrips"
         :key="trip.id"
@@ -133,11 +112,15 @@ onMounted(() => {
       />
     </div>
 
-    <!-- 여행이 없을 때 -->
-    <div
-      v-else
-      class="empty-trips"
-    >
+    <div v-else class="empty-trips">
+      <div class="state-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8.5 7V5.8C8.5 4.8 9.3 4 10.3 4h3.4c1 0 1.8.8 1.8 1.8V7" />
+          <rect x="4" y="7" width="16" height="12" rx="2.5" />
+          <path d="M4 11h16M9 11v2M15 11v2" />
+        </svg>
+      </div>
+
       <p>해당하는 여행이 없습니다.</p>
 
       <RouterLink
@@ -168,96 +151,127 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #4566e8;
+  color: var(--tmr-primary);
 }
 
 .desktop-page-heading h1 {
   margin: 0;
   font-size: 30px;
-  color: #1d2430;
+  color: var(--tmr-text);
+}
+
+.desktop-create-button,
+.empty-create-button,
+.error-state button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  font-weight: 700;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .desktop-create-button {
-  display: flex;
   height: 44px;
-  align-items: center;
-  justify-content: center;
+  gap: 7px;
   padding: 0 22px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-  text-decoration: none;
-  background: #405bf4;
 }
 
-/* 여행 목록 */
+.desktop-create-button span {
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.desktop-create-button:hover,
+.empty-create-button:hover,
+.error-state button:hover {
+  background: var(--tmr-primary-dark);
+}
+
+.desktop-create-button:active,
+.empty-create-button:active,
+.error-state button:active {
+  transform: scale(0.98);
+}
+
 .trip-list {
-  border-bottom: 1px solid #e8ebf0;
+  border-bottom: 1px solid var(--tmr-border);
 }
 
-/* 로딩 및 오류 */
 .loading-state,
-.error-state {
-  display: flex;
-  min-height: 260px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  border-bottom: 1px solid #e8ebf0;
-  font-size: 14px;
-  color: #8d95a0;
-}
-
-.error-state p {
-  margin: 0;
-}
-
-.error-state button {
-  height: 38px;
-  padding: 0 17px;
-  border: 0;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #ffffff;
-  background: #405bf4;
-  cursor: pointer;
-}
-
-/* 빈 목록 */
+.error-state,
 .empty-trips {
   display: flex;
   min-height: 260px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  border-bottom: 1px solid #e8ebf0;
+  gap: 12px;
+  border: 1px solid var(--tmr-border);
+  border-radius: 16px;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
+.loading-state p,
+.error-state p,
 .empty-trips p {
   margin: 0;
-  font-size: 14px;
-  color: #8d95a0;
+  font-size: 13px;
 }
 
-.empty-create-button {
+.state-icon {
   display: flex;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   align-items: center;
   justify-content: center;
-  padding: 0 17px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #ffffff;
-  text-decoration: none;
-  background: #405bf4;
+  border-radius: 50%;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
 }
 
-/* 모바일 */
+.state-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.loading-icon svg {
+  animation: loading-spin 1s linear infinite;
+  stroke-dasharray: 35 15;
+}
+
+.error-icon {
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
+}
+
+.error-state button,
+.empty-create-button {
+  height: 38px;
+  padding: 0 17px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 760px) {
   .trips-page {
     padding: 0 17px 92px;
@@ -275,15 +289,23 @@ onMounted(() => {
   .error-state,
   .empty-trips {
     min-height: 220px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--tmr-surface);
   }
 
-  .loading-state,
-  .error-state {
-    font-size: 12px;
-  }
-
+  .loading-state p,
+  .error-state p,
   .empty-trips p {
     font-size: 12px;
+  }
+
+  .state-icon {
+    background: var(--tmr-surface-soft);
+  }
+
+  .error-icon {
+    background: var(--tmr-accent-soft);
   }
 }
 </style>

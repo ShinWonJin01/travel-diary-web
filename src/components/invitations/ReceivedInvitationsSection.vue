@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type TripInvitation } from '@/api/invitations'
+import type { TripInvitation } from '@/api/invitations'
 
 defineProps<{
   invitations: TripInvitation[]
@@ -38,14 +38,6 @@ const getThumbnailClass = (invitation: TripInvitation) => {
   return thumbnailClasses[
     invitation.tripId % thumbnailClasses.length
   ]
-}
-
-const handleAccept = (invitationId: number) => {
-  emit('accept', invitationId)
-}
-
-const handleDecline = (invitationId: number) => {
-  emit('decline', invitationId)
 }
 </script>
 
@@ -97,7 +89,7 @@ const handleDecline = (invitationId: number) => {
             :disabled="
               processingInvitationId === invitation.invitationId
             "
-            @click="handleDecline(invitation.invitationId)"
+            @click="emit('decline', invitation.invitationId)"
           >
             거절
           </button>
@@ -108,7 +100,7 @@ const handleDecline = (invitationId: number) => {
             :disabled="
               processingInvitationId === invitation.invitationId
             "
-            @click="handleAccept(invitation.invitationId)"
+            @click="emit('accept', invitation.invitationId)"
           >
             {{
               processingInvitationId === invitation.invitationId
@@ -120,10 +112,7 @@ const handleDecline = (invitationId: number) => {
       </article>
     </div>
 
-    <div
-      v-else
-      class="empty-state"
-    >
+    <div v-else class="empty-state">
       <p>받은 여행 초대가 없습니다.</p>
 
       <span>
@@ -137,10 +126,9 @@ const handleDecline = (invitationId: number) => {
 .section-title {
   margin: 0 0 17px;
   font-size: 17px;
-  color: #202631;
+  color: var(--tmr-text);
 }
 
-/* 공통 썸네일 */
 .trip-thumbnail {
   position: relative;
   overflow: hidden;
@@ -191,7 +179,6 @@ const handleDecline = (invitationId: number) => {
   background: rgba(255, 255, 255, 0.78);
 }
 
-/* 받은 초대 */
 .received-invitation-list {
   display: grid;
   gap: 14px;
@@ -203,9 +190,9 @@ const handleDecline = (invitationId: number) => {
   align-items: center;
   gap: 20px;
   padding: 16px;
-  border: 1px solid #e4e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--tmr-surface);
   box-shadow: 0 5px 18px rgba(37, 54, 78, 0.06);
 }
 
@@ -229,20 +216,20 @@ const handleDecline = (invitationId: number) => {
 .received-invitation-information h3 {
   margin: 0;
   font-size: 15px;
-  color: #252b35;
+  color: var(--tmr-text);
 }
 
 .received-invitation-information p {
   margin: 7px 0 0;
   font-size: 12px;
-  color: #646d79;
+  color: var(--tmr-text-sub);
 }
 
 .received-invitation-information span {
   display: block;
   margin-top: 5px;
   font-size: 11px;
-  color: #9aa1aa;
+  color: var(--tmr-text-sub);
 }
 
 .received-invitation-actions {
@@ -257,35 +244,33 @@ const handleDecline = (invitationId: number) => {
   border-radius: 6px;
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
 }
 
 .reject-button {
-  border: 1px solid #dce1e8;
-  color: #606a77;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .accept-button {
-  border: 1px solid #2864ed;
+  border: 1px solid var(--tmr-primary);
   color: #ffffff;
-  background: #2864ed;
+  background: var(--tmr-primary);
 }
 
 .reject-button:hover {
-  background: #f5f7fa;
+  background: var(--tmr-surface-soft);
 }
 
 .accept-button:hover {
-  background: #1e56d9;
+  background: var(--tmr-primary-dark);
 }
 
 .received-invitation-actions button:disabled {
-  opacity: 0.6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
-/* 빈 목록 */
 .empty-state {
   display: flex;
   min-height: 180px;
@@ -294,21 +279,22 @@ const handleDecline = (invitationId: number) => {
   justify-content: center;
   gap: 8px;
   padding: 38px 20px;
-  border: 1px dashed #d6dce4;
+  border: 1px dashed var(--tmr-border);
   border-radius: 10px;
   text-align: center;
+  background: var(--tmr-surface);
 }
 
 .empty-state p {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #747d89;
+  color: var(--tmr-text-sub);
 }
 
 .empty-state span {
   font-size: 11px;
-  color: #a0a7b0;
+  color: var(--tmr-text-sub);
 }
 
 @media (max-width: 760px) {

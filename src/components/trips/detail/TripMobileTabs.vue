@@ -24,15 +24,13 @@ const tabs: TabItem[] = [
 </script>
 
 <template>
-  <nav
-    class="mobile-tabs"
-    aria-label="여행 상세 메뉴"
-  >
+  <nav class="mobile-tabs" aria-label="여행 상세 메뉴">
     <button
       v-for="tab in tabs"
       :key="tab.id"
       type="button"
       :class="{ active: activeTab === tab.id }"
+      :aria-pressed="activeTab === tab.id"
       @click="emit('change', tab.id)"
     >
       {{ tab.label }}
@@ -49,11 +47,9 @@ const tabs: TabItem[] = [
   .mobile-tabs {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
-    overflow: visible;
     padding: 0 8px;
-    border-bottom: 1px solid #e7ebf1;
-    background: #ffffff;
+    border-bottom: 1px solid var(--tmr-border);
+    background: var(--tmr-surface);
   }
 
   .mobile-tabs button {
@@ -65,15 +61,17 @@ const tabs: TabItem[] = [
     border: 0;
     font-size: 10px;
     font-weight: 600;
-    color: #8993a1;
+    color: var(--tmr-text-sub);
     text-overflow: ellipsis;
     white-space: nowrap;
     background: transparent;
-    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      background 0.2s ease;
   }
 
   .mobile-tabs button.active {
-    color: #3163ed;
+    color: var(--tmr-primary);
   }
 
   .mobile-tabs button.active::after {
@@ -83,7 +81,7 @@ const tabs: TabItem[] = [
     left: 8px;
     height: 2px;
     border-radius: 2px 2px 0 0;
-    background: #3163ed;
+    background: var(--tmr-primary);
     content: '';
   }
 }

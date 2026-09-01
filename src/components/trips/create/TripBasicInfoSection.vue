@@ -19,18 +19,11 @@ const tripForm = defineModel<TripForm>({
 
 const endDateMinimum = computed<Date | undefined>(() => {
   const startDate = tripForm.value.startDate
-
-  if (!startDate) {
-    return undefined
-  }
+  if (!startDate) return undefined
 
   const parsedDate = new Date(`${startDate}T00:00:00`)
 
-  if (Number.isNaN(parsedDate.getTime())) {
-    return undefined
-  }
-
-  return parsedDate
+  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate
 })
 
 watch(
@@ -45,8 +38,7 @@ watch(
 )
 
 const handleEndDateUnknown = () => {
-  tripForm.value.isEndDateUnknown =
-    !tripForm.value.isEndDateUnknown
+  tripForm.value.isEndDateUnknown = !tripForm.value.isEndDateUnknown
 
   if (tripForm.value.isEndDateUnknown) {
     tripForm.value.endDate = ''
@@ -75,7 +67,6 @@ const handleEndDateUnknown = () => {
             여행 제목
             <strong>*</strong>
           </label>
-
           <span>{{ tripForm.title.length }}/30</span>
         </div>
 
@@ -102,9 +93,7 @@ const handleEndDateUnknown = () => {
             enableTimePicker: false,
             ignoreTimeValidation: true,
           }"
-          :ui="{
-            input: 'trip-date-input',
-          }"
+          :ui="{ input: 'trip-date-input' }"
           auto-apply
           placeholder="시작일을 선택해 주세요."
         />
@@ -124,9 +113,7 @@ const handleEndDateUnknown = () => {
             enableTimePicker: false,
             ignoreTimeValidation: true,
           }"
-          :ui="{
-            input: 'trip-date-input',
-          }"
+          :ui="{ input: 'trip-date-input' }"
           :min-date="endDateMinimum"
           :disabled="tripForm.isEndDateUnknown || !tripForm.startDate"
           auto-apply
@@ -149,7 +136,6 @@ const handleEndDateUnknown = () => {
               <path d="m5 12 4 4L19 6" />
             </svg>
           </span>
-
           종료일 미정
         </button>
       </div>
@@ -161,10 +147,7 @@ const handleEndDateUnknown = () => {
         </label>
 
         <div class="location-input">
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
             <circle cx="12" cy="10" r="2.5" />
           </svg>
@@ -185,10 +168,7 @@ const handleEndDateUnknown = () => {
 
       <div class="form-field form-field-full">
         <div class="field-heading">
-          <label for="trip-description">
-            한 줄 소개
-          </label>
-
+          <label for="trip-description">한 줄 소개</label>
           <span>{{ tripForm.description.length }}/100</span>
         </div>
 
@@ -207,10 +187,10 @@ const handleEndDateUnknown = () => {
 <style scoped>
 .form-section {
   padding: 26px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 5px 18px rgba(37, 54, 78, 0.05);
+  background: var(--tmr-surface);
+  box-shadow: 0 5px 18px rgba(49, 95, 217, 0.05);
 }
 
 .section-heading {
@@ -224,25 +204,25 @@ const handleEndDateUnknown = () => {
 .section-heading h2 {
   margin: 0;
   font-size: 18px;
-  color: #222934;
+  color: var(--tmr-text);
 }
 
 .section-heading p {
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #8a929d;
+  color: var(--tmr-text-sub);
 }
 
 .required-guide {
   flex-shrink: 0;
   font-size: 11px;
-  color: #929aa5;
+  color: var(--tmr-text-sub);
 }
 
 .required-guide strong,
 .form-field label strong {
-  color: #ef4b5d;
+  color: var(--tmr-accent);
 }
 
 .form-grid {
@@ -272,28 +252,23 @@ const handleEndDateUnknown = () => {
   margin-bottom: 9px;
   font-size: 13px;
   font-weight: 700;
-  color: #343b46;
-}
-
-.field-heading label {
-  margin-bottom: 9px;
+  color: var(--tmr-text);
 }
 
 .field-heading > span {
   margin-bottom: 9px;
   font-size: 10px;
-  color: #a1a8b1;
+  color: var(--tmr-text-sub);
 }
 
 .form-field input,
 .form-field textarea {
   width: 100%;
-  border: 1px solid #dfe4eb;
+  border: 1px solid var(--tmr-border);
   border-radius: var(--form-input-radius);
   outline: none;
-  font: inherit;
-  color: #303743;
-  background: #ffffff;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -313,16 +288,16 @@ const handleEndDateUnknown = () => {
 
 .form-field input::placeholder,
 .form-field textarea::placeholder {
-  color: #b0b7c0;
+  color: #adb7c5;
 }
 
 .form-field input:focus,
 .form-field textarea:focus {
-  border-color: #5272ed;
-  box-shadow: 0 0 0 3px rgba(82, 114, 237, 0.1);
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
-/* VueDatePicker를 일반 입력창과 동일하게 표시 */
 .form-field :deep(.dp__main),
 .form-field :deep(.dp__input_wrap) {
   width: 100%;
@@ -338,48 +313,50 @@ const handleEndDateUnknown = () => {
   height: var(--form-input-height) !important;
   min-height: var(--form-input-height) !important;
   padding: 0 40px !important;
-  border: 1px solid #dfe4eb !important;
+  border: 1px solid var(--tmr-border) !important;
   border-radius: var(--form-input-radius) !important;
   outline: none;
   font-family: inherit !important;
   font-size: inherit !important;
   line-height: normal !important;
-  color: #303743 !important;
-  background: #ffffff !important;
+  color: var(--tmr-text) !important;
+  background: var(--tmr-surface) !important;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .form-field :deep(.trip-date-input::placeholder) {
-  color: #b0b7c0 !important;
+  color: #adb7c5 !important;
   opacity: 1;
 }
 
 .form-field :deep(.trip-date-input:focus) {
-  border-color: #5272ed !important;
-  box-shadow: 0 0 0 3px rgba(82, 114, 237, 0.1);
+  border-color: var(--tmr-primary) !important;
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
 .form-field :deep(.trip-date-input:disabled) {
-  color: #abb2bb !important;
-  background: #f3f5f7 !important;
+  color: var(--tmr-text-sub) !important;
+  background: var(--tmr-surface-soft) !important;
   cursor: not-allowed;
-  opacity: 1;
+  opacity: 0.7;
+}
+
+.form-field :deep(.dp__input_icon),
+.form-field :deep(.dp__clear_icon) {
+  width: 18px;
+  height: 18px;
+  color: var(--tmr-text-sub);
 }
 
 .form-field :deep(.dp__input_icon) {
   left: 13px;
-  width: 18px;
-  height: 18px;
-  color: #84909e;
 }
 
 .form-field :deep(.dp__clear_icon) {
   right: 13px;
-  width: 18px;
-  height: 18px;
-  color: #84909e;
 }
 
 .location-input {
@@ -393,7 +370,7 @@ const handleEndDateUnknown = () => {
   width: 18px;
   height: 18px;
   fill: none;
-  stroke: #84909e;
+  stroke: var(--tmr-primary);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.7;
@@ -408,42 +385,41 @@ const handleEndDateUnknown = () => {
 .field-guide {
   margin: 7px 0 0;
   font-size: 10px;
-  color: #a0a7b0;
+  color: var(--tmr-text-sub);
 }
 
 .unknown-date-option {
   display: flex;
+  width: fit-content;
   align-items: center;
   gap: 7px;
-  width: fit-content;
   margin-top: 9px;
   padding: 0;
   border: 0;
   font-size: 11px;
-  color: #747d89;
+  color: var(--tmr-text-sub);
   background: transparent;
-  cursor: pointer;
 }
 
 .checkbox-icon {
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 16px;
   height: 16px;
-  border: 1px solid #cbd1d9;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tmr-border);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .unknown-date-option.checked {
-  color: #315ce8;
+  color: var(--tmr-primary);
 }
 
 .unknown-date-option.checked .checkbox-icon {
-  border-color: #315ce8;
-  color: #ffffff;
-  background: #315ce8;
+  border-color: var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
 }
 
 .checkbox-icon svg {
@@ -494,38 +470,33 @@ const handleEndDateUnknown = () => {
     font-size: 11px;
   }
 
-  .field-heading label,
   .field-heading > span {
     margin-bottom: 7px;
-  }
-
-  .field-heading > span {
     font-size: 8px;
   }
 
   .form-field input {
-    height: var(--form-input-height);
     padding: 0 12px;
     font-size: 11px;
   }
 
   .form-field :deep(.trip-date-input) {
-    height: var(--form-input-height) !important;
-    min-height: var(--form-input-height) !important;
     padding: 0 36px !important;
     font-size: 11px !important;
   }
 
-  .form-field :deep(.dp__input_icon) {
-    left: 12px;
+  .form-field :deep(.dp__input_icon),
+  .form-field :deep(.dp__clear_icon) {
     width: 16px;
     height: 16px;
   }
 
+  .form-field :deep(.dp__input_icon) {
+    left: 12px;
+  }
+
   .form-field :deep(.dp__clear_icon) {
     right: 12px;
-    width: 16px;
-    height: 16px;
   }
 
   .form-field textarea {

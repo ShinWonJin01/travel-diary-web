@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {
-  type InvitationStatus,
-  type TripInvitation,
+import type {
+  InvitationStatus,
+  TripInvitation,
 } from '@/api/invitations'
 
 defineProps<{
@@ -62,10 +62,6 @@ const getThumbnailClass = (invitation: TripInvitation) => {
     invitation.tripId % thumbnailClasses.length
   ]
 }
-
-const handleCancel = (invitationId: number) => {
-  emit('cancel', invitationId)
-}
 </script>
 
 <template>
@@ -108,8 +104,7 @@ const handleCancel = (invitationId: number) => {
             </span>
 
             <span class="sent-date">
-              보낸 날짜
-              {{ formatSentDate(invitation.createdAt) }}
+              보낸 날짜 {{ formatSentDate(invitation.createdAt) }}
             </span>
           </div>
         </div>
@@ -129,7 +124,7 @@ const handleCancel = (invitationId: number) => {
             :disabled="
               processingInvitationId === invitation.invitationId
             "
-            @click="handleCancel(invitation.invitationId)"
+            @click="emit('cancel', invitation.invitationId)"
           >
             {{
               processingInvitationId === invitation.invitationId
@@ -141,10 +136,7 @@ const handleCancel = (invitationId: number) => {
       </article>
     </div>
 
-    <div
-      v-else
-      class="empty-state"
-    >
+    <div v-else class="empty-state">
       <p>보낸 여행 초대가 없습니다.</p>
 
       <span>
@@ -158,10 +150,9 @@ const handleCancel = (invitationId: number) => {
 .section-title {
   margin: 0 0 17px;
   font-size: 17px;
-  color: #202631;
+  color: var(--tmr-text);
 }
 
-/* 공통 썸네일 */
 .trip-thumbnail {
   position: relative;
   overflow: hidden;
@@ -212,7 +203,6 @@ const handleCancel = (invitationId: number) => {
   background: rgba(255, 255, 255, 0.78);
 }
 
-/* 보낸 초대 */
 .sent-invitation-list {
   display: grid;
   gap: 14px;
@@ -224,9 +214,9 @@ const handleCancel = (invitationId: number) => {
   align-items: center;
   gap: 20px;
   padding: 16px;
-  border: 1px solid #e4e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--tmr-surface);
   box-shadow: 0 5px 18px rgba(37, 54, 78, 0.06);
 }
 
@@ -250,13 +240,13 @@ const handleCancel = (invitationId: number) => {
 .sent-invitation-information h3 {
   margin: 0;
   font-size: 15px;
-  color: #252b35;
+  color: var(--tmr-text);
 }
 
 .sent-invitation-information p {
   margin: 7px 0 0;
   font-size: 12px;
-  color: #646d79;
+  color: var(--tmr-text-sub);
 }
 
 .sent-invitation-information span {
@@ -266,13 +256,13 @@ const handleCancel = (invitationId: number) => {
 .sent-trip-period {
   margin-top: 5px;
   font-size: 11px;
-  color: #8f97a2;
+  color: var(--tmr-text-sub);
 }
 
 .sent-date {
   margin-top: 4px;
   font-size: 10px;
-  color: #afb5bd;
+  color: var(--tmr-text-sub);
 }
 
 .sent-invitation-state {
@@ -304,32 +294,30 @@ const handleCancel = (invitationId: number) => {
 }
 
 .status-badge.declined {
-  color: #7f8791;
-  background: #f0f2f5;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
 .cancel-invitation-button {
   width: 100%;
   height: 36px;
-  border: 1px solid #dce1e8;
+  border: 1px solid var(--tmr-border);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: #606a77;
-  background: #ffffff;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .cancel-invitation-button:hover {
-  background: #f5f7fa;
+  background: var(--tmr-surface-soft);
 }
 
 .cancel-invitation-button:disabled {
-  opacity: 0.6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
-/* 빈 목록 */
 .empty-state {
   display: flex;
   min-height: 180px;
@@ -338,21 +326,22 @@ const handleCancel = (invitationId: number) => {
   justify-content: center;
   gap: 8px;
   padding: 38px 20px;
-  border: 1px dashed #d6dce4;
+  border: 1px dashed var(--tmr-border);
   border-radius: 10px;
   text-align: center;
+  background: var(--tmr-surface);
 }
 
 .empty-state p {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #747d89;
+  color: var(--tmr-text-sub);
 }
 
 .empty-state span {
   font-size: 11px;
-  color: #a0a7b0;
+  color: var(--tmr-text-sub);
 }
 
 @media (max-width: 760px) {
@@ -401,7 +390,7 @@ const handleCancel = (invitationId: number) => {
     justify-content: space-between;
     gap: 8px;
     padding-top: 10px;
-    border-top: 1px solid #edf0f4;
+    border-top: 1px solid var(--tmr-border);
   }
 
   .status-badge {

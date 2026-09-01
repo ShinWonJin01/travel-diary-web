@@ -66,9 +66,7 @@ defineProps<{
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8.5 7V5.8C8.5 4.8 9.3 4 10.3 4h3.4c1 0 1.8.8 1.8 1.8V7" />
             <rect x="4" y="7" width="16" height="12" rx="2.5" />
-            <path d="M4 11h16" />
-            <path d="M9 11v2" />
-            <path d="M15 11v2" />
+            <path d="M4 11h16M9 11v2M15 11v2" />
           </svg>
         </div>
 
@@ -90,7 +88,7 @@ defineProps<{
   margin: 0;
   font-size: 19px;
   font-weight: 700;
-  color: #171c24;
+  color: var(--tmr-text);
 }
 
 .section-heading a {
@@ -99,7 +97,11 @@ defineProps<{
   gap: 3px;
   font-size: 13px;
   font-weight: 600;
-  color: #3f63f0;
+  color: var(--tmr-primary);
+}
+
+.section-heading a:hover {
+  color: var(--tmr-primary-dark);
 }
 
 .section-heading a span {
@@ -107,11 +109,11 @@ defineProps<{
   line-height: 1;
 }
 
-/* 최근 여행 */
 .recent-trip-content {
   padding: 24px 28px 22px;
+  border: 1px solid var(--tmr-border);
   border-radius: 22px;
-  background: #f6fafc;
+  background: var(--tmr-surface-soft);
 }
 
 .recent-trip-list {
@@ -122,9 +124,10 @@ defineProps<{
 
 .recent-trip-card {
   overflow: hidden;
-  border-radius: 14px 14px 0 0;
-  background: #ffffff;
-  box-shadow: 0 3px 0 #c9d0d7;
+  border: 1px solid var(--tmr-border);
+  border-radius: 14px;
+  background: var(--tmr-surface);
+  box-shadow: 0 3px 0 var(--tmr-border);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -132,14 +135,14 @@ defineProps<{
 
 .recent-trip-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(47, 69, 96, 0.13);
+  box-shadow: 0 7px 16px rgba(49, 95, 217, 0.12);
 }
 
 .recent-trip-image {
   display: flex;
+  height: 126px;
   align-items: center;
   justify-content: center;
-  height: 126px;
   overflow: hidden;
 }
 
@@ -151,24 +154,24 @@ defineProps<{
 
 .recent-trip-image svg {
   width: 58px;
-  fill: #ffffff;
+  fill: var(--tmr-surface);
   opacity: 0.9;
 }
 
 .trip-theme-blue {
-  background: linear-gradient(145deg, #9eb8d3, #7897b9);
+  background: linear-gradient(145deg, #91b6ff, #5d86e8);
 }
 
 .trip-theme-green {
-  background: linear-gradient(145deg, #abcbbd, #6b9c8b);
+  background: linear-gradient(145deg, #9bd8c7, #63ad9a);
 }
 
 .trip-theme-purple {
-  background: linear-gradient(145deg, #a8a5cc, #7778ab);
+  background: linear-gradient(145deg, #b5acf1, #8275d1);
 }
 
 .trip-theme-sky {
-  background: linear-gradient(145deg, #acd5e8, #6eafca);
+  background: linear-gradient(145deg, #a5dcf3, #6db6d6);
 }
 
 .recent-trip-information {
@@ -179,49 +182,49 @@ defineProps<{
   margin: 0;
   font-size: 14px;
   font-weight: 700;
-  color: #252a33;
+  color: var(--tmr-text);
 }
 
 .recent-trip-information p {
   margin: 7px 0 0;
   font-size: 10px;
-  color: #808894;
+  color: var(--tmr-text-sub);
 }
 
-/* 빈 상태 */
 .recent-trip-empty {
   display: flex;
+  min-height: 130px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 130px;
 }
 
 .recent-trip-empty-icon {
   display: flex;
+  width: 40px;
+  height: 40px;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
   margin-bottom: 10px;
   border-radius: 50%;
-  background: #edf2f6;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
 }
 
 .recent-trip-empty-icon svg {
   width: 20px;
   height: 20px;
   fill: none;
-  stroke: #91a0b2;
-  stroke-width: 1.6;
+  stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .recent-trip-empty p {
   margin: 0;
   font-size: 11px;
-  color: #98a4b3;
+  color: var(--tmr-text-sub);
 }
 
 @media (max-width: 900px) {
@@ -253,7 +256,7 @@ defineProps<{
 
   .recent-trip-content {
     padding: 0;
-    border-radius: 0;
+    border: 0;
     background: transparent;
   }
 
@@ -272,7 +275,7 @@ defineProps<{
 
   .recent-trip-card {
     flex: 0 0 132px;
-    border-radius: 8px;
+    border-radius: 10px;
     box-shadow: none;
     scroll-snap-align: start;
   }
@@ -283,7 +286,6 @@ defineProps<{
 
   .recent-trip-image {
     height: 86px;
-    border-radius: 8px;
   }
 
   .recent-trip-image svg {
@@ -291,7 +293,7 @@ defineProps<{
   }
 
   .recent-trip-information {
-    padding: 8px 1px 3px;
+    padding: 8px 8px 7px;
   }
 
   .recent-trip-information h2 {
@@ -305,13 +307,14 @@ defineProps<{
 
   .recent-trip-empty {
     min-height: 110px;
+    border: 1px solid var(--tmr-border);
     border-radius: 12px;
-    background: #f6fafc;
+    background: var(--tmr-surface-soft);
   }
 
   .recent-trip-empty-icon {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     margin-bottom: 8px;
   }
 

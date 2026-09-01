@@ -9,9 +9,11 @@ import {
 } from '@/api/auth'
 import { ApiError } from '@/api/http'
 
-/* =========================
-   부모에게서 받는 값
-========================= */
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]
 
 const props = defineProps<{
   member: Member
@@ -19,22 +21,13 @@ const props = defineProps<{
   profileImageUrl: string | null
 }>()
 
-/* =========================
-   부모에게 보내는 이벤트
-========================= */
-
 const emit = defineEmits<{
   close: []
   updated: [member: Member]
 }>()
 
-/* =========================
-   프로필 수정 상태
-========================= */
-
 const profileName = ref(props.member.name)
 const profileNickname = ref(props.member.nickname)
-
 const profileErrorMessage = ref('')
 const isUpdatingProfile = ref(false)
 
@@ -43,28 +36,15 @@ const profileImagePreviewUrl = ref<string | null>(null)
 const isProfileImageBroken = ref(false)
 const shouldResetProfileImage = ref(false)
 
-/* =========================
-   프로필 이미지 표시
-========================= */
-
 const displayedProfileImageUrl = computed(() => {
-  if (shouldResetProfileImage.value) {
-    return null
-  }
+  if (shouldResetProfileImage.value) return null
 
   return profileImagePreviewUrl.value ?? props.profileImageUrl
 })
 
-const canResetProfileImage = computed(() => {
-  return Boolean(
-    profileImageFile.value
-    || props.member.profileImagePath,
-  )
-})
-
-/* =========================
-   이미지 선택 정리
-========================= */
+const canResetProfileImage = computed(() =>
+  Boolean(profileImageFile.value || props.member.profileImagePath),
+)
 
 const clearProfileImageSelection = () => {
   if (profileImagePreviewUrl.value) {
@@ -75,41 +55,22 @@ const clearProfileImageSelection = () => {
   profileImagePreviewUrl.value = null
 }
 
-/* =========================
-   모달 닫기
-========================= */
-
 const closeProfileModal = () => {
-  if (isUpdatingProfile.value) {
-    return
-  }
+  if (isUpdatingProfile.value) return
 
   clearProfileImageSelection()
   emit('close')
 }
 
-/* =========================
-   프로필 사진 선택
-========================= */
-
 const handleProfileImageChange = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
 
-  if (!file) {
-    return
-  }
+  if (!file) return
 
-  const allowedTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-  ]
-
-  if (!allowedTypes.includes(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     profileErrorMessage.value =
       'JPG, PNG 또는 WEBP 이미지만 등록할 수 있습니다.'
-
     input.value = ''
     return
   }
@@ -117,7 +78,6 @@ const handleProfileImageChange = (event: Event) => {
   if (file.size > 10 * 1024 * 1024) {
     profileErrorMessage.value =
       '프로필 이미지는 10MB 이하로 등록해 주세요.'
-
     input.value = ''
     return
   }
@@ -129,30 +89,20 @@ const handleProfileImageChange = (event: Event) => {
   profileImagePreviewUrl.value = URL.createObjectURL(file)
   isProfileImageBroken.value = false
   profileErrorMessage.value = ''
+  input.value = ''
 }
-
-/* =========================
-   기본 이미지로 변경
-========================= */
 
 const handleResetProfileImage = () => {
+  if (isUpdatingProfile.value) return
+
   profileErrorMessage.value = ''
-
-  if (isUpdatingProfile.value) {
-    return
-  }
-
   clearProfileImageSelection()
 
-  shouldResetProfileImage.value =
-    Boolean(props.member.profileImagePath)
-
+  shouldResetProfileImage.value = Boolean(
+    props.member.profileImagePath,
+  )
   isProfileImageBroken.value = false
 }
-
-/* =========================
-   프로필 저장
-========================= */
 
 const submitProfileUpdate = async () => {
   profileErrorMessage.value = ''
@@ -166,8 +116,7 @@ const submitProfileUpdate = async () => {
   }
 
   if (name.length > 50) {
-    profileErrorMessage.value =
-      '이름은 50자 이하로 입력해 주세요.'
+    profileErrorMessage.value = '이름은 50자 이하로 입력해 주세요.'
     return
   }
 
@@ -199,7 +148,6 @@ const submitProfileUpdate = async () => {
       updatedMember = await uploadProfileImage(
         profileImageFile.value,
       )
-
       emit('updated', updatedMember)
     }
 
@@ -207,7 +155,6 @@ const submitProfileUpdate = async () => {
     shouldResetProfileImage.value = false
 
     clearProfileImageSelection()
-
     emit('close')
 
     window.alert('프로필이 수정되었습니다.')
@@ -221,13 +168,7 @@ const submitProfileUpdate = async () => {
   }
 }
 
-/* =========================
-   미리보기 URL 정리
-========================= */
-
-onBeforeUnmount(() => {
-  clearProfileImageSelection()
-})
+onBeforeUnmount(clearProfileImageSelection)
 </script>
 
 <template>
@@ -251,6 +192,7 @@ onBeforeUnmount(() => {
           class="profile-modal-close"
           type="button"
           aria-label="프로필 수정 창 닫기"
+          :disabled="isUpdatingProfile"
           @click="closeProfileModal"
         >
           ×
@@ -261,13 +203,12 @@ onBeforeUnmount(() => {
         class="profile-form"
         @submit.prevent="submitProfileUpdate"
       >
-        <!-- 프로필 사진 -->
         <div class="profile-edit-avatar">
           <div class="profile-edit-avatar-circle">
             <img
               v-if="
-                displayedProfileImageUrl
-                && !isProfileImageBroken
+                displayedProfileImageUrl &&
+                !isProfileImageBroken
               "
               :src="displayedProfileImageUrl"
               alt="프로필 사진 미리보기"
@@ -285,6 +226,7 @@ onBeforeUnmount(() => {
             <div class="profile-image-actions">
               <label
                 class="profile-image-button"
+                :class="{ disabled: isUpdatingProfile }"
                 for="profile-image"
               >
                 사진 변경
@@ -294,8 +236,8 @@ onBeforeUnmount(() => {
                 class="profile-image-reset-button"
                 type="button"
                 :disabled="
-                  isUpdatingProfile
-                  || !canResetProfileImage
+                  isUpdatingProfile ||
+                  !canResetProfileImage
                 "
                 @click="handleResetProfileImage"
               >
@@ -316,7 +258,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 이름 -->
         <div class="profile-field">
           <label for="profile-name">이름</label>
 
@@ -331,7 +272,6 @@ onBeforeUnmount(() => {
           />
         </div>
 
-        <!-- 닉네임 -->
         <div class="profile-field">
           <label for="profile-nickname">닉네임</label>
 
@@ -345,7 +285,6 @@ onBeforeUnmount(() => {
           />
         </div>
 
-        <!-- 이메일 -->
         <div class="profile-field">
           <label for="profile-email">이메일</label>
 
@@ -364,6 +303,7 @@ onBeforeUnmount(() => {
         <p
           v-if="profileErrorMessage"
           class="profile-error-message"
+          role="alert"
         >
           {{ profileErrorMessage }}
         </p>
@@ -405,10 +345,13 @@ onBeforeUnmount(() => {
 
 .profile-modal {
   width: min(440px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   padding: 24px;
+  border: 1px solid var(--tmr-border);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(26, 36, 53, 0.24);
+  background: var(--tmr-surface);
+  box-shadow: 0 24px 70px rgba(36, 48, 66, 0.22);
 }
 
 .profile-modal-header {
@@ -423,13 +366,13 @@ onBeforeUnmount(() => {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #4566e8;
+  color: var(--tmr-primary);
 }
 
 .profile-modal-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #222934;
+  color: var(--tmr-text);
 }
 
 .profile-modal-close {
@@ -440,9 +383,16 @@ onBeforeUnmount(() => {
   border-radius: 9px;
   font-size: 23px;
   line-height: 1;
-  color: #747e8c;
-  background: #f3f5f8;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.profile-modal-close:hover:not(:disabled) {
+  color: var(--tmr-primary);
+  background: var(--tmr-background);
 }
 
 .profile-form {
@@ -452,30 +402,34 @@ onBeforeUnmount(() => {
   margin-top: 24px;
 }
 
-/* 프로필 이미지 */
-
 .profile-edit-avatar {
   display: flex;
   align-items: center;
   gap: 13px;
   padding: 13px;
+  border: 1px solid var(--tmr-border);
   border-radius: 11px;
-  background: #f6f8fb;
+  background: var(--tmr-surface-soft);
 }
 
 .profile-edit-avatar-circle {
   display: flex;
+  width: 50px;
+  height: 50px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
   overflow: hidden;
+  border: 2px solid var(--tmr-surface);
   border-radius: 50%;
   font-size: 17px;
   font-weight: 700;
-  color: #ffffff;
-  background: linear-gradient(145deg, #7798be, #4e6688);
+  color: var(--tmr-surface);
+  background: linear-gradient(
+    145deg,
+    var(--tmr-primary),
+    var(--tmr-primary-dark)
+  );
 }
 
 .profile-edit-avatar-circle img {
@@ -493,14 +447,14 @@ onBeforeUnmount(() => {
 
 .profile-image-control strong {
   font-size: 11px;
-  color: #35404d;
+  color: var(--tmr-text);
 }
 
 .profile-image-control p {
   margin: 5px 0 0;
   font-size: 9px;
   line-height: 1.5;
-  color: #929ba7;
+  color: var(--tmr-text-sub);
 }
 
 .profile-image-actions {
@@ -513,34 +467,45 @@ onBeforeUnmount(() => {
 .profile-image-button,
 .profile-image-reset-button {
   display: inline-flex;
+  height: 30px;
   align-items: center;
   justify-content: center;
-  height: 30px;
   padding: 0 11px;
-  border: 1px solid #dce2ea;
   border-radius: 8px;
-  box-sizing: border-box;
   font-size: 10px;
   font-weight: 700;
-  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .profile-image-button {
-  color: #586575;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
+  cursor: pointer;
 }
 
 .profile-image-button:hover {
-  background: #f6f8fa;
+  border-color: var(--tmr-primary);
+  background: var(--tmr-background);
+}
+
+.profile-image-button.disabled {
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .profile-image-reset-button {
-  color: #6f7782;
-  background: #f6f7f9;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .profile-image-reset-button:hover:not(:disabled) {
-  background: #eceff3;
+  color: var(--tmr-text);
+  background: var(--tmr-background);
 }
 
 .profile-image-reset-button:disabled {
@@ -552,8 +517,6 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-/* 입력 */
-
 .profile-field {
   display: flex;
   flex-direction: column;
@@ -563,43 +526,53 @@ onBeforeUnmount(() => {
 .profile-field label {
   font-size: 11px;
   font-weight: 700;
-  color: #495362;
+  color: var(--tmr-text);
 }
 
 .profile-field input {
   width: 100%;
   height: 44px;
   padding: 0 13px;
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 9px;
   outline: none;
-  box-sizing: border-box;
   font-size: 12px;
-  color: #2c3440;
-  background: #ffffff;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.profile-field input::placeholder {
+  color: var(--tmr-text-sub);
 }
 
 .profile-field input:focus {
-  border-color: #5878e9;
-  box-shadow: 0 0 0 3px rgba(88, 120, 233, 0.11);
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 12%, transparent);
 }
 
 .profile-field input:disabled {
-  color: #929ba7;
-  background: #f5f6f8;
   cursor: not-allowed;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
 .profile-field-help {
   font-size: 9px;
-  color: #9aa2ad;
+  color: var(--tmr-text-sub);
 }
 
 .profile-error-message {
   margin: -3px 0 0;
+  padding: 9px 10px;
+  border-radius: 7px;
   font-size: 10px;
   line-height: 1.5;
-  color: #c74658;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
 }
 
 .profile-modal-actions {
@@ -616,32 +589,46 @@ onBeforeUnmount(() => {
   border-radius: 9px;
   font-size: 11px;
   font-weight: 700;
-  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .profile-cancel-button {
-  border: 1px solid #dce2ea;
-  color: #66717f;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+}
+
+.profile-cancel-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .profile-submit-button {
-  border: 0;
-  color: #ffffff;
-  background: #3565ef;
+  border: 1px solid var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
 }
 
-.profile-submit-button:hover {
-  background: #2958df;
+.profile-submit-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary-dark);
+  background: var(--tmr-primary-dark);
 }
 
+.profile-modal-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.profile-modal-close:disabled,
 .profile-cancel-button:disabled,
 .profile-submit-button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
-
-/* 모바일 */
 
 @media (max-width: 760px) {
   .profile-modal-backdrop {
@@ -651,7 +638,11 @@ onBeforeUnmount(() => {
 
   .profile-modal {
     width: 100%;
+    max-height: 90vh;
     padding: 20px 17px 24px;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
     border-radius: 18px 18px 0 0;
   }
 
@@ -683,8 +674,8 @@ onBeforeUnmount(() => {
 
   .profile-cancel-button,
   .profile-submit-button {
-    flex: 1;
     height: 42px;
+    flex: 1;
   }
 }
 </style>

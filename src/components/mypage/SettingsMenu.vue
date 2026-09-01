@@ -37,10 +37,6 @@ const menuItems: SettingsMenuItem[] = [
     description: '로그아웃과 회원 탈퇴를 관리합니다.',
   },
 ]
-
-const handleMenuClick = (menuId: SettingsMenuId) => {
-  emit('select', menuId)
-}
 </script>
 
 <template>
@@ -53,10 +49,9 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
         :key="item.id"
         class="settings-item"
         type="button"
-        @click="handleMenuClick(item.id)"
+        @click="emit('select', item.id)"
       >
         <span class="settings-icon">
-          <!-- 프로필 수정 -->
           <svg
             v-if="item.id === 'profile'"
             viewBox="0 0 24 24"
@@ -66,7 +61,6 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
             <path d="M4 21c0-5 3-8 8-8s8 3 8 8" />
           </svg>
 
-          <!-- 알림 설정 -->
           <svg
             v-else-if="item.id === 'notifications'"
             viewBox="0 0 24 24"
@@ -75,7 +69,6 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
           </svg>
 
-          <!-- 비밀번호 변경 -->
           <svg
             v-else-if="item.id === 'password'"
             viewBox="0 0 24 24"
@@ -85,7 +78,6 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
             <path d="M8 10V7a4 4 0 0 1 8 0v3" />
           </svg>
 
-          <!-- 계정 관리 -->
           <svg
             v-else
             viewBox="0 0 24 24"
@@ -115,29 +107,29 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
 .settings-section > h2 {
   margin: 0 0 15px;
   font-size: 17px;
-  color: #202631;
+  color: var(--tmr-text);
 }
 
 .settings-list {
   overflow: hidden;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .settings-item {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) 24px;
-  align-items: center;
-  gap: 14px;
   width: 100%;
   min-height: 76px;
+  align-items: center;
+  gap: 14px;
   padding: 13px 20px;
   border: 0;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--tmr-border);
   text-align: left;
-  background: #ffffff;
-  cursor: pointer;
+  background: var(--tmr-surface);
+  transition: background 0.2s ease;
 }
 
 .settings-item:last-child {
@@ -145,18 +137,28 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
 }
 
 .settings-item:hover {
-  background: #f8fafc;
+  background: var(--tmr-surface-soft);
 }
 
 .settings-icon {
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 38px;
   height: 38px;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
-  color: #4f6f98;
-  background: #eef3f8;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.settings-item:hover .settings-icon {
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transform: translateY(-1px);
 }
 
 .settings-icon svg {
@@ -178,21 +180,29 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
 
 .settings-information strong {
   font-size: 14px;
-  color: #272e38;
+  color: var(--tmr-text);
 }
 
 .settings-information > span {
   overflow: hidden;
   font-size: 11px;
-  color: #959da8;
+  color: var(--tmr-text-sub);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .settings-arrow {
   font-size: 24px;
-  color: #a3abb5;
+  color: var(--tmr-text-sub);
   text-align: right;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.settings-item:hover .settings-arrow {
+  color: var(--tmr-primary);
+  transform: translateX(2px);
 }
 
 @media (max-width: 760px) {
@@ -207,8 +217,8 @@ const handleMenuClick = (menuId: SettingsMenuId) => {
 
   .settings-item {
     grid-template-columns: 36px minmax(0, 1fr) 18px;
-    gap: 11px;
     min-height: 66px;
+    gap: 11px;
     padding: 11px 13px;
   }
 

@@ -73,8 +73,7 @@ export default function useNotifications(
   const formatNotificationTime = (
     createdAt: string,
   ) => {
-    const createdTime =
-      new Date(createdAt).getTime()
+    const createdTime = new Date(createdAt).getTime()
 
     if (Number.isNaN(createdTime)) {
       return ''
@@ -102,9 +101,7 @@ export default function useNotifications(
       return `${Math.floor(diff / day)}일 전`
     }
 
-    return new Date(
-      createdAt,
-    ).toLocaleDateString(
+    return new Date(createdAt).toLocaleDateString(
       'ko-KR',
       {
         month: 'numeric',
@@ -115,30 +112,20 @@ export default function useNotifications(
 
   const loadNotifications = async () => {
     try {
-      const response =
-        await getNotifications()
+      const response = await getNotifications()
 
-      notifications.value =
-        response.map((notification) => ({
-          id: notification.id,
-          type: getNotificationCategory(
-            notification.type,
-          ),
-          message: notification.message,
-          time: formatNotificationTime(
-            notification.createdAt,
-          ),
-          isRead: notification.read,
-          to: getNotificationLink(
-            notification,
-          ),
-        }))
+      notifications.value = response.map((notification) => ({
+        id: notification.id,
+        type: getNotificationCategory(notification.type),
+        message: notification.message,
+        time: formatNotificationTime(notification.createdAt),
+        isRead: notification.read,
+        to: getNotificationLink(notification),
+      }))
 
-      unreadCount.value =
-        notifications.value.filter(
-          (notification) =>
-            !notification.isRead,
-        ).length
+      unreadCount.value = notifications.value.filter(
+        (notification) => !notification.isRead,
+      ).length
     } catch {
       notifications.value = []
     }
@@ -151,22 +138,19 @@ export default function useNotifications(
     }
 
     try {
-      unreadCount.value =
-        await getUnreadNotificationCount()
+      unreadCount.value = await getUnreadNotificationCount()
     } catch {
       unreadCount.value = 0
     }
   }
 
-  const toggleNotificationPopup =
-    async () => {
-      isNotificationOpen.value =
-        !isNotificationOpen.value
+  const toggleNotificationPopup = async () => {
+    isNotificationOpen.value = !isNotificationOpen.value
 
-      if (isNotificationOpen.value) {
-        await loadNotifications()
-      }
+    if (isNotificationOpen.value) {
+      await loadNotifications()
     }
+  }
 
   const closeNotificationPopup = () => {
     isNotificationOpen.value = false
@@ -180,13 +164,33 @@ export default function useNotifications(
     try {
       await markAllNotificationsAsRead()
 
-      notifications.value.forEach(
-        (notification) => {
-          notification.isRead = true
-        },
-      )
+      notifications.value.forEach((notification) => {
+        notification.isRead = true
+      })
 
       unreadCount.value = 0
+    } catch {
+      await loadNotifications()
+      await loadUnreadCount()
+    }
+  }
+
+  const markAsRead = async (
+    notification: NotificationItem,
+  ) => {
+    if (notification.isRead) {
+      return
+    }
+
+    try {
+      await markNotificationAsRead(notification.id)
+
+      notification.isRead = true
+
+      unreadCount.value = Math.max(
+        unreadCount.value - 1,
+        0,
+      )
     } catch {
       await loadNotifications()
       await loadUnreadCount()
@@ -196,22 +200,7 @@ export default function useNotifications(
   const openNotification = async (
     notification: NotificationItem,
   ) => {
-    if (!notification.isRead) {
-      try {
-        await markNotificationAsRead(
-          notification.id,
-        )
-
-        notification.isRead = true
-
-        unreadCount.value = Math.max(
-          unreadCount.value - 1,
-          0,
-        )
-      } catch {
-        // 읽음 처리 실패 시에도 화면 이동은 허용
-      }
-    }
+    await markAsRead(notification)
 
     closeNotificationPopup()
 
@@ -227,6 +216,7 @@ export default function useNotifications(
     toggleNotificationPopup,
     closeNotificationPopup,
     markAllAsRead,
+    markAsRead,
     openNotification,
   }
 }

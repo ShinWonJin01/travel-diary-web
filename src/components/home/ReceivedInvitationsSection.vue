@@ -21,11 +21,7 @@ defineProps<{
     <div class="section-heading">
       <div class="invitation-heading-title">
         <h1>받은 여행 초대</h1>
-
-        <span
-          v-if="invitations.length > 0"
-          class="invitation-count"
-        >
+        <span v-if="invitations.length > 0" class="invitation-count">
           {{ invitations.length }}
         </span>
       </div>
@@ -36,23 +32,14 @@ defineProps<{
       </RouterLink>
     </div>
 
-    <div
-      v-if="invitations.length > 0"
-      class="invitation-list"
-    >
+    <div v-if="invitations.length > 0" class="invitation-list">
       <article
         v-for="invitation in invitations"
         :key="invitation.id"
         class="invitation-item"
       >
-        <div
-          class="invitation-thumbnail"
-          :class="invitation.theme"
-        >
-          <svg
-            viewBox="0 0 32 27"
-            aria-hidden="true"
-          >
+        <div class="invitation-thumbnail" :class="invitation.theme">
+          <svg viewBox="0 0 32 27" aria-hidden="true">
             <path d="M2 25 11 14l5 6 5-7 9 12z" />
             <circle cx="22" cy="7" r="4" />
           </svg>
@@ -61,15 +48,11 @@ defineProps<{
         <div class="invitation-information">
           <div class="invitation-title-row">
             <h2>{{ invitation.title }}</h2>
-
-            <span class="invitation-status">
-              초대 대기
-            </span>
+            <span class="invitation-status">초대 대기</span>
           </div>
 
           <p class="inviter-information">
-            <strong>{{ invitation.inviter }}</strong>님이
-            여행에 초대했어요.
+            <strong>{{ invitation.inviter }}</strong>님이 여행에 초대했어요.
           </p>
 
           <p class="invitation-detail">
@@ -89,32 +72,23 @@ defineProps<{
       </article>
     </div>
 
-    <div
-      v-else
-      class="invitation-empty"
-    >
+    <div v-else class="invitation-empty">
       <span class="invitation-empty-icon">
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <rect
-            x="3"
-            y="5"
-            width="18"
-            height="14"
-            rx="2"
-          />
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2" />
           <path d="m4 7 8 6 8-6" />
         </svg>
       </span>
-
       <p>현재 받은 여행 초대가 없습니다.</p>
     </div>
   </section>
 </template>
 
 <style scoped>
+.invitation-section {
+  margin-top: 50px;
+}
+
 .section-heading {
   display: flex;
   align-items: center;
@@ -126,7 +100,7 @@ defineProps<{
   margin: 0;
   font-size: 19px;
   font-weight: 700;
-  color: #171c24;
+  color: var(--tmr-text);
 }
 
 .section-heading a {
@@ -135,17 +109,16 @@ defineProps<{
   gap: 3px;
   font-size: 13px;
   font-weight: 600;
-  color: #3f63f0;
+  color: var(--tmr-primary);
+}
+
+.section-heading a:hover {
+  color: var(--tmr-primary-dark);
 }
 
 .section-heading a span {
   font-size: 20px;
   line-height: 1;
-}
-
-/* 받은 여행 초대 */
-.invitation-section {
-  margin-top: 50px;
 }
 
 .invitation-heading-title {
@@ -156,57 +129,64 @@ defineProps<{
 
 .invitation-count {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-width: 20px;
   height: 20px;
+  align-items: center;
+  justify-content: center;
   padding: 0 6px;
   border-radius: 10px;
   font-size: 10px;
   font-weight: 700;
-  color: #ffffff;
-  background: #405bf4;
+  color: var(--tmr-surface);
+  background: var(--tmr-accent);
 }
 
 .invitation-list {
-  border-top: 1px solid #e5e8ed;
+  overflow: hidden;
+  border: 1px solid var(--tmr-border);
+  border-radius: 16px;
+  background: var(--tmr-surface);
 }
 
 .invitation-item {
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr) auto;
+  min-height: 96px;
   align-items: center;
   gap: 16px;
-  min-height: 96px;
-  padding: 14px 10px;
-  border-bottom: 1px solid #e5e8ed;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--tmr-border);
   transition: background 0.2s ease;
 }
 
+.invitation-item:last-child {
+  border-bottom: 0;
+}
+
 .invitation-item:hover {
-  background: #f8fafc;
+  background: var(--tmr-surface-soft);
 }
 
 .invitation-thumbnail {
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 58px;
   height: 58px;
-  border-radius: 9px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
 }
 
 .invitation-thumbnail svg {
   width: 29px;
-  fill: #ffffff;
+  fill: var(--tmr-surface);
 }
 
 .invitation-theme-blue {
-  background: linear-gradient(145deg, #a6bdd6, #7899bd);
+  background: linear-gradient(145deg, #91b6ff, #5d86e8);
 }
 
 .invitation-theme-green {
-  background: linear-gradient(145deg, #9fc5b7, #6c9d8b);
+  background: linear-gradient(145deg, #9bd8c7, #63ad9a);
 }
 
 .invitation-information {
@@ -224,7 +204,7 @@ defineProps<{
   margin: 0;
   font-size: 14px;
   font-weight: 700;
-  color: #252a33;
+  color: var(--tmr-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -235,53 +215,53 @@ defineProps<{
   border-radius: 10px;
   font-size: 9px;
   font-weight: 700;
-  color: #4566e8;
-  background: #edf1ff;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
 }
 
 .inviter-information {
   margin: 6px 0 0;
   font-size: 11px;
-  color: #565f6b;
+  color: var(--tmr-text-sub);
 }
 
 .inviter-information strong {
   font-weight: 700;
-  color: #343b46;
+  color: var(--tmr-text);
 }
 
 .invitation-detail {
   margin: 5px 0 0;
   font-size: 10px;
-  color: #8a929d;
+  color: var(--tmr-text-sub);
 }
 
 .invitation-detail span {
   margin: 0 5px;
-  color: #c2c7ce;
+  color: var(--tmr-border);
 }
 
 .invitation-check-button {
   display: flex;
+  height: 34px;
   align-items: center;
   justify-content: center;
-  height: 34px;
   padding: 0 13px;
-  border: 1px solid #405bf4;
-  border-radius: 7px;
+  border: 1px solid var(--tmr-primary);
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 700;
-  color: #405bf4;
-  background: #ffffff;
+  color: var(--tmr-primary);
   white-space: nowrap;
+  background: var(--tmr-surface);
   transition:
     color 0.2s ease,
     background 0.2s ease;
 }
 
 .invitation-check-button:hover {
-  color: #ffffff;
-  background: #405bf4;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
 }
 
 .invitation-empty {
@@ -291,20 +271,21 @@ defineProps<{
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-top: 1px solid #e5e8ed;
-  border-bottom: 1px solid #e5e8ed;
-  color: #98a0aa;
+  border: 1px solid var(--tmr-border);
+  border-radius: 16px;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
 }
 
 .invitation-empty-icon {
   display: flex;
+  width: 40px;
+  height: 40px;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
   border-radius: 50%;
-  color: #8794a3;
-  background: #f1f4f7;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
 }
 
 .invitation-empty-icon svg {
@@ -323,6 +304,10 @@ defineProps<{
 }
 
 @media (max-width: 760px) {
+  .invitation-section {
+    margin-top: 30px;
+  }
+
   .section-heading {
     margin-bottom: 14px;
   }
@@ -339,10 +324,6 @@ defineProps<{
     font-size: 16px;
   }
 
-  .invitation-section {
-    margin-top: 30px;
-  }
-
   .invitation-heading-title {
     gap: 6px;
   }
@@ -355,20 +336,26 @@ defineProps<{
   }
 
   .invitation-list {
-    border-top: 0;
+    border: 0;
+    border-radius: 0;
   }
 
   .invitation-item {
     grid-template-columns: 51px minmax(0, 1fr) auto;
-    gap: 10px;
     min-height: 78px;
+    gap: 10px;
     padding: 10px 0;
+    border-bottom: 1px solid var(--tmr-border);
+  }
+
+  .invitation-item:hover {
+    background: transparent;
   }
 
   .invitation-thumbnail {
     width: 51px;
     height: 51px;
-    border-radius: 7px;
+    border-radius: 9px;
   }
 
   .invitation-thumbnail svg {
@@ -388,11 +375,7 @@ defineProps<{
     font-size: 7px;
   }
 
-  .inviter-information {
-    margin-top: 4px;
-    font-size: 8px;
-  }
-
+  .inviter-information,
   .invitation-detail {
     margin-top: 4px;
     font-size: 8px;
@@ -407,11 +390,12 @@ defineProps<{
 
   .invitation-empty {
     min-height: 105px;
+    border-radius: 12px;
   }
 
   .invitation-empty-icon {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
   }
 
   .invitation-empty-icon svg {

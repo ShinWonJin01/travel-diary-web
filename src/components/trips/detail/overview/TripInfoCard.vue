@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-  onBeforeUnmount,
-  onMounted,
-  ref,
-} from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import type { Participant } from '@/composables/trips/useTripParticipants'
 
@@ -33,8 +29,7 @@ const emit = defineEmits<{
 const isTripMenuOpen = ref(false)
 
 const toggleTripMenu = () => {
-  isTripMenuOpen.value =
-    !isTripMenuOpen.value
+  isTripMenuOpen.value = !isTripMenuOpen.value
 }
 
 const closeTripMenu = () => {
@@ -56,38 +51,22 @@ const handleLeave = () => {
   emit('leave')
 }
 
-const handleOutsideClick = (
-  event: MouseEvent,
-) => {
-  if (!isTripMenuOpen.value) {
-    return
-  }
+const handleOutsideClick = (event: MouseEvent) => {
+  if (!isTripMenuOpen.value) return
 
   const target = event.target
-
-  if (!(target instanceof Element)) {
-    return
-  }
-
-  if (target.closest('.trip-more-wrapper')) {
-    return
-  }
+  if (!(target instanceof Element)) return
+  if (target.closest('.trip-more-wrapper')) return
 
   closeTripMenu()
 }
 
 onMounted(() => {
-  document.addEventListener(
-    'click',
-    handleOutsideClick,
-  )
+  document.addEventListener('click', handleOutsideClick)
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener(
-    'click',
-    handleOutsideClick,
-  )
+  document.removeEventListener('click', handleOutsideClick)
 })
 </script>
 
@@ -96,9 +75,7 @@ onBeforeUnmount(() => {
     <div class="trip-info-top">
       <div
         class="trip-cover-preview"
-        :class="{
-          'trip-cover-preview-empty': !coverImageUrl,
-        }"
+        :class="{ 'trip-cover-preview-empty': !coverImageUrl }"
       >
         <img
           v-if="coverImageUrl"
@@ -107,28 +84,18 @@ onBeforeUnmount(() => {
           @error="emit('cover-error')"
         />
 
-        <svg
-          v-else
-          viewBox="0 0 64 52"
-          aria-hidden="true"
-        >
+        <svg v-else viewBox="0 0 64 52" aria-hidden="true">
           <path d="M4 48 22 26l10 12 9-11 19 21z" />
           <circle cx="45" cy="14" r="7" />
         </svg>
       </div>
 
       <div class="trip-info-main">
-        <span class="trip-info-label">
-          여행 기본 정보
-        </span>
-
+        <span class="trip-info-label">여행 기본 정보</span>
         <h2>{{ tripDestination }}</h2>
         <p>{{ tripPeriod }}</p>
 
-        <p
-          v-if="tripDescription"
-          class="trip-description"
-        >
+        <p v-if="tripDescription" class="trip-description">
           {{ tripDescription }}
         </p>
       </div>
@@ -141,14 +108,10 @@ onBeforeUnmount(() => {
           aria-label="여행 정보 수정"
           @click="handleEdit"
         >
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16z" />
             <path d="m13.5 6.5 4 4" />
           </svg>
-
           <span>수정</span>
         </button>
 
@@ -161,10 +124,7 @@ onBeforeUnmount(() => {
             :aria-expanded="isTripMenuOpen"
             @click="toggleTripMenu"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="5" r="1.3" />
               <circle cx="12" cy="12" r="1.3" />
               <circle cx="12" cy="19" r="1.3" />
@@ -213,24 +173,17 @@ onBeforeUnmount(() => {
           <strong>{{ ownerNickname }}</strong>
         </div>
 
-        <div
-          class="trip-info-divider desktop-participant-divider"
-        ></div>
+        <div class="trip-info-divider desktop-participant-divider"></div>
 
         <div class="desktop-participant-item">
-          <span class="desktop-participant-label">
-            참여자
-          </span>
+          <span class="desktop-participant-label">참여자</span>
 
           <button
             class="desktop-participant-summary"
             type="button"
             @click="emit('open-participants')"
           >
-            <span
-              class="participant-avatars"
-              aria-hidden="true"
-            >
+            <span class="participant-avatars" aria-hidden="true">
               <span
                 v-for="participant in visibleParticipants"
                 :key="participant.id"
@@ -256,9 +209,7 @@ onBeforeUnmount(() => {
               </span>
             </span>
 
-            <strong>
-              {{ participantCount }}명
-            </strong>
+            <strong>{{ participantCount }}명</strong>
           </button>
         </div>
       </div>
@@ -278,13 +229,9 @@ onBeforeUnmount(() => {
           type="button"
           @click="emit('add-photo')"
         >
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
           </svg>
-
           <span>사진 추가</span>
         </button>
       </div>
@@ -298,9 +245,9 @@ onBeforeUnmount(() => {
   grid-column: 1 / -1;
   flex-direction: column;
   padding: 18px 20px;
-  border: 1px solid #e6eaf2;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .trip-info-top {
@@ -319,7 +266,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   overflow: hidden;
   border-radius: 12px;
-  background: #edf1f5;
+  background: var(--tmr-surface-soft);
 }
 
 .trip-cover-preview img {
@@ -330,12 +277,12 @@ onBeforeUnmount(() => {
 
 .trip-cover-preview svg {
   width: 42px;
-  fill: #ffffff;
+  fill: var(--tmr-surface);
   opacity: 0.9;
 }
 
 .trip-cover-preview-empty {
-  background: linear-gradient(145deg, #a8bcd2, #7896b6);
+  background: linear-gradient(145deg, #91b6ff, #5d86e8);
 }
 
 .trip-info-main {
@@ -348,19 +295,19 @@ onBeforeUnmount(() => {
   margin-bottom: 8px;
   font-size: 10px;
   font-weight: 700;
-  color: #5273db;
+  color: var(--tmr-primary);
 }
 
 .trip-info-main h2 {
   margin: 0;
   font-size: 19px;
-  color: #222934;
+  color: var(--tmr-text);
 }
 
 .trip-info-main p {
   margin: 7px 0 0;
   font-size: 12px;
-  color: #8a93a0;
+  color: var(--tmr-text-sub);
 }
 
 .trip-description {
@@ -368,7 +315,7 @@ onBeforeUnmount(() => {
   margin-top: 9px;
   overflow: hidden;
   line-height: 1.55;
-  color: #5f6875;
+  color: var(--tmr-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -386,19 +333,22 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 5px;
   padding: 0 10px;
-  border: 1px solid #dfe5ee;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
   font-size: 10px;
   font-weight: 700;
-  color: #596575;
-  background: #ffffff;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .trip-edit-button:hover {
-  color: #315fe8;
-  border-color: #bdcaef;
-  background: #f4f7ff;
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .trip-edit-button svg {
@@ -411,6 +361,72 @@ onBeforeUnmount(() => {
   stroke-width: 1.8;
 }
 
+.trip-more-wrapper {
+  position: relative;
+}
+
+.trip-more-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--tmr-text-sub);
+  background: transparent;
+}
+
+.trip-more-button:hover {
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+}
+
+.trip-more-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.trip-menu-popup {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  width: 130px;
+  overflow: hidden;
+  flex-direction: column;
+  padding: 5px;
+  border: 1px solid var(--tmr-border);
+  border-radius: 9px;
+  background: var(--tmr-surface);
+  box-shadow: 0 12px 30px rgba(36, 48, 66, 0.14);
+}
+
+.trip-menu-popup button {
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--tmr-text);
+  text-align: left;
+  background: transparent;
+}
+
+.trip-menu-popup button:hover {
+  background: var(--tmr-surface-soft);
+}
+
+.trip-menu-popup .danger-menu-item {
+  color: var(--tmr-accent);
+}
+
+.trip-menu-popup .danger-menu-item:hover {
+  background: var(--tmr-accent-soft);
+}
+
 .trip-info-bottom {
   display: flex;
   flex-wrap: wrap;
@@ -419,7 +435,7 @@ onBeforeUnmount(() => {
   gap: 16px 24px;
   margin-top: 16px;
   padding-top: 15px;
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid var(--tmr-border);
 }
 
 .trip-info-meta {
@@ -440,19 +456,19 @@ onBeforeUnmount(() => {
 .trip-info-item span,
 .desktop-participant-label {
   font-size: 10px;
-  color: #929aa5;
+  color: var(--tmr-text-sub);
 }
 
 .trip-info-item strong {
   font-size: 13px;
-  color: #313844;
+  color: var(--tmr-text);
 }
 
 .trip-info-divider {
   width: 1px;
   height: 34px;
   flex: 0 0 auto;
-  background: #e6eaf0;
+  background: var(--tmr-border);
 }
 
 .desktop-participant-item {
@@ -471,12 +487,11 @@ onBeforeUnmount(() => {
   border: 0;
   color: inherit;
   background: transparent;
-  cursor: pointer;
 }
 
 .desktop-participant-summary strong {
   font-size: 12px;
-  color: #4f5967;
+  color: var(--tmr-text);
   white-space: nowrap;
 }
 
@@ -494,11 +509,11 @@ onBeforeUnmount(() => {
   place-items: center;
   overflow: hidden;
   padding: 0;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--tmr-surface);
   border-radius: 50%;
   font-size: 10px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--tmr-surface);
 }
 
 .participant-avatar:first-child {
@@ -512,20 +527,20 @@ onBeforeUnmount(() => {
 }
 
 .avatar-blue {
-  background: #6f91c1;
+  background: var(--tmr-primary);
 }
 
 .avatar-green {
-  background: #72a584;
+  background: #63ad9a;
 }
 
 .avatar-orange {
-  background: #c88d61;
+  background: var(--tmr-accent);
 }
 
 .remaining-avatar {
-  color: #5e6b7a;
-  background: #eef1f5;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
 }
 
 .trip-info-actions {
@@ -542,17 +557,24 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: 0 12px;
-  border: 1px solid #cfdaff;
+  border: 1px solid var(--tmr-border);
   border-radius: 9px;
   font-size: 10px;
   font-weight: 700;
-  color: #315fe8;
-  background: #eef3ff;
-  cursor: pointer;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .desktop-invite-button:hover {
-  background: #e4ebff;
+  border-color: var(--tmr-primary);
+  background: color-mix(
+    in srgb,
+    var(--tmr-primary) 12%,
+    var(--tmr-surface)
+  );
 }
 
 .desktop-photo-button {
@@ -566,13 +588,19 @@ onBeforeUnmount(() => {
   border-radius: 9px;
   font-size: 11px;
   font-weight: 700;
-  color: #ffffff;
-  background: #3464ee;
-  cursor: pointer;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .desktop-photo-button:hover {
-  background: #2857df;
+  background: var(--tmr-primary-dark);
+}
+
+.desktop-photo-button:active {
+  transform: scale(0.98);
 }
 
 .desktop-photo-button svg {
@@ -582,73 +610,6 @@ onBeforeUnmount(() => {
   stroke: currentColor;
   stroke-linecap: round;
   stroke-width: 2;
-}
-
-.trip-more-wrapper {
-  position: relative;
-}
-
-.trip-more-button {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  color: #5f6977;
-  background: transparent;
-  cursor: pointer;
-}
-
-.trip-more-button:hover {
-  background: #f1f3f7;
-}
-
-.trip-more-button svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
-.trip-menu-popup {
-  position: absolute;
-  top: calc(100% + 7px);
-  right: 0;
-  z-index: 50;
-  display: flex;
-  width: 130px;
-  overflow: hidden;
-  flex-direction: column;
-  padding: 5px;
-  border: 1px solid #e2e7ee;
-  border-radius: 9px;
-  background: #ffffff;
-  box-shadow: 0 12px 30px rgba(38, 48, 67, 0.15);
-}
-
-.trip-menu-popup button {
-  height: 34px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  font-size: 11px;
-  color: #46505e;
-  text-align: left;
-  background: transparent;
-  cursor: pointer;
-}
-
-.trip-menu-popup button:hover {
-  background: #f3f6fa;
-}
-
-.trip-menu-popup .danger-menu-item {
-  color: #d54b5d;
-}
-
-.trip-menu-popup .danger-menu-item:hover {
-  background: #fff1f3;
 }
 
 @media (max-width: 760px) {
@@ -688,6 +649,20 @@ onBeforeUnmount(() => {
     font-size: 8px;
   }
 
+  .trip-info-main h2 {
+    font-size: 13px;
+  }
+
+  .trip-info-main p {
+    margin-top: 5px;
+    font-size: 9px;
+  }
+
+  .trip-description {
+    max-width: none;
+    white-space: normal;
+  }
+
   .trip-top-actions {
     gap: 4px;
   }
@@ -710,20 +685,6 @@ onBeforeUnmount(() => {
   .trip-more-button {
     width: 29px;
     height: 29px;
-  }
-
-  .trip-info-main h2 {
-    font-size: 13px;
-  }
-
-  .trip-info-main p {
-    margin-top: 5px;
-    font-size: 9px;
-  }
-
-  .trip-description {
-    max-width: none;
-    white-space: normal;
   }
 
   .trip-info-bottom {

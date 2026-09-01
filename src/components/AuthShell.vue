@@ -110,7 +110,7 @@ defineProps<{
   align-items: center;
   justify-content: center;
   padding: 32px;
-  background: #f2f5fa;
+  background: var(--tmr-background);
 }
 
 .auth-frame {
@@ -120,25 +120,30 @@ defineProps<{
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid #e4e9f0;
+  border: 1px solid var(--tmr-border);
   border-radius: 24px;
-  background: #ffffff;
+  background: var(--tmr-surface);
   box-shadow: 0 28px 70px rgba(44, 61, 86, 0.13);
 }
 
 .auth-visual {
   position: relative;
+  min-height: 0;
   overflow: hidden;
   padding: 48px;
   color: #ffffff;
   background:
     radial-gradient(
       circle at 18% 20%,
-      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0.14),
       transparent 25%
     ),
-    linear-gradient(145deg, #7696bd, #425f85 58%, #344d70);
-  min-height: 0;
+    linear-gradient(
+      145deg,
+      #6682c4,
+      #405f9f 58%,
+      #314a7c
+    );
 }
 
 .auth-visual::after {
@@ -267,11 +272,11 @@ defineProps<{
 
 .auth-panel {
   display: flex;
+  min-height: 0;
   align-items: center;
   justify-content: center;
   padding: 45px 68px;
-  background: #ffffff;
-  min-height: 0;
+  background: var(--tmr-surface);
 }
 
 .auth-card {
@@ -282,14 +287,14 @@ defineProps<{
 .auth-card-header h2 {
   margin: 0;
   font-size: 28px;
-  color: #222a36;
+  color: var(--tmr-text);
 }
 
 .auth-card-header p {
   margin: 11px 0 0;
   font-size: 12px;
   line-height: 1.7;
-  color: #8a939f;
+  color: var(--tmr-text-sub);
 }
 
 .auth-form {
@@ -330,31 +335,31 @@ defineProps<{
   margin-bottom: 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #4e5968;
+  color: var(--tmr-text);
 }
 
 .auth-field input {
   width: 100%;
   height: 48px;
   padding: 0 14px;
-  border: 1px solid #dce2e9;
+  border: 1px solid var(--tmr-border);
   border-radius: 9px;
   outline: none;
   font-size: 13px;
-  color: #2f3743;
-  background: #ffffff;
+  color: var(--tmr-text);
+  background: var(--tmr-surface);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 }
 
 .auth-field input::placeholder {
-  color: #b1b7bf;
+  color: var(--tmr-text-sub);
 }
 
 .auth-field input:focus {
-  border-color: #557bea;
-  box-shadow: 0 0 0 3px rgba(85, 123, 234, 0.11);
+  border-color: var(--tmr-primary);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.11);
 }
 
 .auth-input-wrap {
@@ -373,9 +378,8 @@ defineProps<{
   border: 0;
   font-size: 10px;
   font-weight: 700;
-  color: #6d7a8d;
+  color: var(--tmr-text-sub);
   background: transparent;
-  cursor: pointer;
   transform: translateY(-50%);
 }
 
@@ -383,7 +387,7 @@ defineProps<{
   margin: 7px 0 0;
   font-size: 9px;
   line-height: 1.6;
-  color: #959da8;
+  color: var(--tmr-text-sub);
 }
 
 .auth-options {
@@ -405,13 +409,13 @@ defineProps<{
   width: 15px;
   height: 15px;
   margin: 1px 0 0;
-  accent-color: #3e69ec;
+  accent-color: var(--tmr-primary);
 }
 
 .auth-checkbox span {
   font-size: 10px;
   line-height: 1.5;
-  color: #6c7684;
+  color: var(--tmr-text-sub);
 }
 
 .auth-text-button {
@@ -419,10 +423,9 @@ defineProps<{
   border: 0;
   font-size: 10px;
   font-weight: 600;
-  color: #446de8;
+  color: var(--tmr-primary);
   text-decoration: none;
   background: transparent;
-  cursor: pointer;
 }
 
 .auth-submit {
@@ -434,13 +437,12 @@ defineProps<{
   font-size: 13px;
   font-weight: 700;
   color: #ffffff;
-  background: #416bea;
-  box-shadow: 0 9px 20px rgba(65, 107, 234, 0.2);
-  cursor: pointer;
+  background: var(--tmr-primary);
+  box-shadow: 0 9px 20px rgba(79, 124, 255, 0.2);
 }
 
 .auth-submit:hover {
-  background: #355fe0;
+  background: var(--tmr-primary-dark);
 }
 
 .auth-submit:disabled,
@@ -471,14 +473,14 @@ defineProps<{
 .auth-switch {
   margin: 23px 0 0;
   font-size: 11px;
-  color: #89929e;
+  color: var(--tmr-text-sub);
   text-align: center;
 }
 
 .auth-switch a {
   margin-left: 5px;
   font-weight: 700;
-  color: #416bea;
+  color: var(--tmr-primary);
   text-decoration: none;
 }
 
@@ -501,7 +503,7 @@ defineProps<{
     display: block;
     min-height: calc(100vh - 58px);
     padding: 0;
-    background: #ffffff;
+    background: var(--tmr-surface);
   }
 
   .auth-frame {

@@ -8,10 +8,6 @@ defineProps<{
 const emit = defineEmits<{
   change: [tab: InvitationTab]
 }>()
-
-const handleTabClick = (tab: InvitationTab) => {
-  emit('change', tab)
-}
 </script>
 
 <template>
@@ -20,7 +16,7 @@ const handleTabClick = (tab: InvitationTab) => {
       type="button"
       :class="{ active: activeTab === 'received' }"
       :aria-pressed="activeTab === 'received'"
-      @click="handleTabClick('received')"
+      @click="emit('change', 'received')"
     >
       받은 초대
     </button>
@@ -29,7 +25,7 @@ const handleTabClick = (tab: InvitationTab) => {
       type="button"
       :class="{ active: activeTab === 'sent' }"
       :aria-pressed="activeTab === 'sent'"
-      @click="handleTabClick('sent')"
+      @click="emit('change', 'sent')"
     >
       보낸 초대
     </button>
@@ -40,7 +36,7 @@ const handleTabClick = (tab: InvitationTab) => {
 .invitation-tabs {
   display: grid;
   grid-template-columns: repeat(2, 160px);
-  border-bottom: 1px solid #e4e8ee;
+  border-bottom: 1px solid var(--tmr-border);
 }
 
 .invitation-tabs button {
@@ -50,13 +46,17 @@ const handleTabClick = (tab: InvitationTab) => {
   border: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #9299a4;
+  color: var(--tmr-text-sub);
   background: transparent;
-  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.invitation-tabs button:hover {
+  color: var(--tmr-primary);
 }
 
 .invitation-tabs button.active {
-  color: #3264ed;
+  color: var(--tmr-primary);
 }
 
 .invitation-tabs button.active::after {
@@ -66,8 +66,8 @@ const handleTabClick = (tab: InvitationTab) => {
   left: 0;
   height: 3px;
   border-radius: 3px 3px 0 0;
-  background: #3264ed;
   content: '';
+  background: var(--tmr-primary);
 }
 
 @media (max-width: 760px) {

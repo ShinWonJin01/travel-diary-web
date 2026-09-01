@@ -2,15 +2,12 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import travelStoryLogo from '@/assets/images/travel-story-logo.png'
+
 const route = useRoute()
 
-const isLoginPage = computed(() => {
-  return route.name === 'login'
-})
-
-const isSignUpPage = computed(() => {
-  return route.name === 'signup'
-})
+const isLoginPage = computed(() => route.name === 'login')
+const isSignUpPage = computed(() => route.name === 'signup')
 </script>
 
 <template>
@@ -18,20 +15,16 @@ const isSignUpPage = computed(() => {
     <RouterLink
       class="auth-header-brand"
       to="/login"
-      aria-label="공동 여행기록장 로그인 화면"
+      aria-label="Travel Story 로그인 화면"
     >
-      <span class="brand-symbol">
-        <span></span>
-        <span></span>
-      </span>
-
-      <strong>공동 여행기록장</strong>
+      <img
+        :src="travelStoryLogo"
+        alt="Travel Story"
+        class="brand-logo"
+      />
     </RouterLink>
 
-    <nav
-      class="auth-header-actions"
-      aria-label="로그인 및 회원가입"
-    >
+    <nav class="auth-header-actions" aria-label="로그인 및 회원가입">
       <RouterLink
         class="login-link"
         :class="{ active: isLoginPage }"
@@ -58,39 +51,19 @@ const isSignUpPage = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 48px;
-  border-bottom: 1px solid #e6ebf1;
-  background: #ffffff;
+  border-bottom: 1px solid var(--tmr-border);
+  background: var(--tmr-surface);
 }
 
 .auth-header-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #6381a5;
 }
 
-.auth-header-brand strong {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.brand-symbol {
-  display: flex;
-  width: 28px;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.brand-symbol span {
-  display: block;
-  height: 9px;
-  border-radius: 10px;
-  background: #cad8e7;
-}
-
-.brand-symbol span:last-child {
-  width: 20px;
-  background: #708cae;
+.brand-logo {
+  width: 150px;
+  height: auto;
+  object-fit: contain;
 }
 
 .auth-header-actions {
@@ -112,25 +85,25 @@ const isSignUpPage = computed(() => {
 
 .login-link {
   border: 1px solid transparent;
-  color: #5e6b7b;
+  color: var(--tmr-text-sub);
 }
 
 .login-link:hover,
 .login-link.active {
-  color: #315de8;
-  background: #f0f4ff;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .signup-link {
-  border: 1px solid #4e6688;
-  color: #ffffff;
-  background: #4e6688;
+  border: 1px solid var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
 }
 
 .signup-link:hover,
 .signup-link.active {
-  border-color: #315de8;
-  background: #315de8;
+  border-color: var(--tmr-primary-dark);
+  background: var(--tmr-primary-dark);
 }
 
 @media (max-width: 760px) {
@@ -140,24 +113,8 @@ const isSignUpPage = computed(() => {
     padding: 0 17px;
   }
 
-  .auth-header-brand {
-    gap: 10px;
-  }
-
-  .auth-header-brand strong {
-    font-size: 15px;
-  }
-
-  .brand-symbol {
-    width: 24px;
-  }
-
-  .brand-symbol span {
-    height: 8px;
-  }
-
-  .brand-symbol span:last-child {
-    width: 17px;
+  .brand-logo {
+    width: 135px;
   }
 
   .auth-header-actions {

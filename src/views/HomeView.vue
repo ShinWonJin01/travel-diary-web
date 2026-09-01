@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { apiBlobRequest } from '@/api/http'
-
 import { getRecentActivities, type RecentActivity } from '@/api/home'
 import { getReceivedInvitations } from '@/api/invitations'
 import { getTrips } from '@/api/trips'
@@ -58,44 +57,35 @@ const loadCoverImageUrl = async (
   tripId: number,
   coverImagePath: string | null,
 ) => {
-  if (!coverImagePath) {
-    return ''
-  }
+  if (!coverImagePath) return ''
 
   if (
-    coverImagePath.startsWith('http://')
-    || coverImagePath.startsWith('https://')
+    coverImagePath.startsWith('http://') ||
+    coverImagePath.startsWith('https://')
   ) {
     return coverImagePath
   }
 
   try {
-    const blob = await apiBlobRequest(
-      `/api/trips/${tripId}/cover-image/file`,
-    )
-
+    const blob = await apiBlobRequest(`/api/trips/${tripId}/cover-image/file`)
     return URL.createObjectURL(blob)
   } catch (error) {
-    console.error(
-      '최근 여행 대표 이미지를 불러오지 못했습니다.',
-      error,
-    )
-
+    console.error('최근 여행 대표 이미지를 불러오지 못했습니다.', error)
     return ''
   }
 }
 
-const formatTripPeriod = (
-  startDate: string,
-  endDate: string | null,
-) => {
+const formatTripPeriod = (startDate: string, endDate: string | null) => {
   const [startYear, startMonth, startDay] = startDate.split('-')
+
   if (!startYear || !startMonth || !startDay) return '-'
 
   const formattedStart = `${startYear}.${startMonth}.${startDay}`
+
   if (!endDate) return `${formattedStart} - 종료일 미정`
 
   const [, endMonth, endDay] = endDate.split('-')
+
   if (!endMonth || !endDay) return formattedStart
 
   return `${formattedStart} - ${endMonth}.${endDay}`
@@ -108,31 +98,20 @@ const loadRecentTrips = async () => {
 
     const coverImageUrls = await Promise.all(
       selectedTrips.map((trip) =>
-        loadCoverImageUrl(
-          trip.id,
-          trip.coverImagePath,
-        ),
+        loadCoverImageUrl(trip.id, trip.coverImagePath),
       ),
     )
 
     revokeRecentTripCoverUrls()
 
-    recentTrips.value = selectedTrips.map(
-      (trip, index) => ({
-        id: trip.id,
-        title: trip.title,
-        period: formatTripPeriod(
-          trip.startDate,
-          trip.endDate,
-        ),
-        theme:
-          recentTripThemes[
-            index % recentTripThemes.length
-          ] ?? 'trip-theme-blue',
-        coverImageUrl:
-          coverImageUrls[index] ?? '',
-      }),
-    )
+    recentTrips.value = selectedTrips.map((trip, index) => ({
+      id: trip.id,
+      title: trip.title,
+      period: formatTripPeriod(trip.startDate, trip.endDate),
+      theme:
+        recentTripThemes[index % recentTripThemes.length] ?? 'trip-theme-blue',
+      coverImageUrl: coverImageUrls[index] ?? '',
+    }))
   } catch {
     revokeRecentTripCoverUrls()
     recentTrips.value = []
@@ -143,15 +122,19 @@ const loadReceivedInvitations = async () => {
   try {
     const invitations = await getReceivedInvitations()
 
-    receivedInvitations.value = invitations.slice(0, 2).map((invitation, index) => ({
-      id: invitation.invitationId,
-      tripId: invitation.tripId,
-      title: invitation.tripTitle,
-      inviter: invitation.inviterNickname,
-      participants: invitation.currentParticipantCount,
-      period: formatTripPeriod(invitation.startDate, invitation.endDate),
-      theme: invitationThemes[index % invitationThemes.length] ?? 'invitation-theme-blue',
-    }))
+    receivedInvitations.value = invitations
+      .slice(0, 2)
+      .map((invitation, index) => ({
+        id: invitation.invitationId,
+        tripId: invitation.tripId,
+        title: invitation.tripTitle,
+        inviter: invitation.inviterNickname,
+        participants: invitation.currentParticipantCount,
+        period: formatTripPeriod(invitation.startDate, invitation.endDate),
+        theme:
+          invitationThemes[index % invitationThemes.length] ??
+          'invitation-theme-blue',
+      }))
   } catch {
     receivedInvitations.value = []
   }
@@ -171,25 +154,18 @@ onMounted(() => {
   void loadRecentActivities()
 })
 
-onBeforeUnmount(() => {
-  revokeRecentTripCoverUrls()
-})
+onBeforeUnmount(revokeRecentTripCoverUrls)
 </script>
 
 <template>
   <div class="home-layout">
     <div class="home-main">
-      <!-- 최근 여행 -->
       <RecentTripsSection :trips="recentTrips" />
-
-      <!-- 받은 여행 초대 -->
       <ReceivedInvitationsSection :invitations="receivedInvitations" />
     </div>
 
-    <!-- PC 최근 활동 -->
     <RecentActivityPanel :activities="recentActivities" />
 
-    <!-- 모바일 여행 만들기 버튼 -->
     <RouterLink
       class="mobile-create-trip-button"
       to="/trips/create"
@@ -198,7 +174,6 @@ onBeforeUnmount(() => {
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 5v14M5 12h14" />
       </svg>
-
       <span>여행 만들기</span>
     </RouterLink>
   </div>
@@ -216,10 +191,14 @@ onBeforeUnmount(() => {
   padding: 42px 42px 50px;
 }
 
-.mobile-create-trip-button { display: none; }
+.mobile-create-trip-button {
+  display: none;
+}
 
 @media (max-width: 900px) {
-  .home-layout { grid-template-columns: 1fr; }
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -228,7 +207,9 @@ onBeforeUnmount(() => {
     min-height: auto;
   }
 
-  .home-main { padding: 23px 17px 150px; }
+  .home-main {
+    padding: 23px 17px 150px;
+  }
 
   .mobile-create-trip-button {
     position: fixed;
@@ -244,17 +225,17 @@ onBeforeUnmount(() => {
     border-radius: 23px;
     font-size: 12px;
     font-weight: 700;
-    color: #ffffff;
-    text-decoration: none;
-    background: #405bf4;
-    box-shadow: 0 7px 20px rgba(64, 91, 244, 0.3);
+    color: var(--tmr-surface);
+    background: var(--tmr-primary);
+    box-shadow: 0 7px 20px
+      color-mix(in srgb, var(--tmr-primary) 30%, transparent);
     transition:
-      transform 0.15s ease,
-      background 0.15s ease;
+      background 0.15s ease,
+      transform 0.15s ease;
   }
 
   .mobile-create-trip-button:active {
-    background: #304bea;
+    background: var(--tmr-primary-dark);
     transform: scale(0.97);
   }
 

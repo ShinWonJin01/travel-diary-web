@@ -17,6 +17,7 @@ withDefaults(
 
 const emit = defineEmits<{
   'mark-all-read': []
+  'mark-read': [notification: NotificationItem]
   open: [notification: NotificationItem]
 }>()
 
@@ -37,6 +38,14 @@ const getNotificationTypeLabel = (
       return '여행 삭제'
   }
 }
+
+const handleNotificationClick = (
+  notification: NotificationItem,
+) => {
+  if (!notification.isRead) {
+    emit('mark-read', notification)
+  }
+}
 </script>
 
 <template>
@@ -47,9 +56,7 @@ const getNotificationTypeLabel = (
     <div class="notification-popup-header">
       <div>
         <h2>알림</h2>
-        <p>
-          읽지 않은 알림 {{ unreadCount }}개
-        </p>
+        <p>읽지 않은 알림 {{ unreadCount }}개</p>
       </div>
 
       <button
@@ -65,50 +72,50 @@ const getNotificationTypeLabel = (
       v-if="notifications.length > 0"
       class="notification-list"
     >
-      <button
+      <div
         v-for="notification in notifications"
         :key="notification.id"
         class="notification-item"
-        :class="{
-          unread: !notification.isRead,
-        }"
-        type="button"
-        @click="emit('open', notification)"
       >
-        <span
-          class="notification-unread-dot"
-          :class="{
-            hidden: notification.isRead,
-          }"
-        ></span>
-
-        <span class="notification-information">
+        <button
+          class="notification-content-button"
+          type="button"
+          @click="handleNotificationClick(notification)"
+        >
           <span
-            class="notification-type"
-            :class="notification.type"
-          >
-            {{
-              getNotificationTypeLabel(
-                notification.type,
-              )
-            }}
-          </span>
+            class="notification-unread-dot"
+            :class="{ hidden: notification.isRead }"
+          ></span>
 
-          <strong>
-            {{ notification.message }}
-          </strong>
+          <span class="notification-information">
+            <span
+              class="notification-type"
+              :class="notification.type"
+            >
+              {{ getNotificationTypeLabel(notification.type) }}
+            </span>
 
-          <span class="notification-meta">
-            {{ notification.time }}
+            <strong>
+              {{ notification.message }}
+            </strong>
+
+            <span class="notification-meta">
+              {{ notification.time }}
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+
+        <button
+          class="notification-move-button"
+          type="button"
+          @click="emit('open', notification)"
+        >
+          이동하기
+        </button>
+      </div>
     </div>
 
-    <div
-      v-else
-      class="empty-notification"
-    >
+    <div v-else class="empty-notification">
       <p>새로운 알림이 없습니다.</p>
     </div>
   </div>
@@ -122,9 +129,9 @@ const getNotificationTypeLabel = (
   z-index: 300;
   width: 370px;
   overflow: hidden;
-  border: 1px solid #e2e7ed;
+  border: 1px solid var(--tmr-border);
   border-radius: 13px;
-  background: #ffffff;
+  background: var(--tmr-surface);
   box-shadow: 0 16px 45px rgba(31, 43, 61, 0.18);
 }
 
@@ -133,19 +140,19 @@ const getNotificationTypeLabel = (
   align-items: center;
   justify-content: space-between;
   padding: 18px 19px;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--tmr-border);
 }
 
 .notification-popup-header h2 {
   margin: 0;
   font-size: 16px;
-  color: #252c36;
+  color: var(--tmr-text);
 }
 
 .notification-popup-header p {
   margin: 5px 0 0;
   font-size: 10px;
-  color: #949ca7;
+  color: var(--tmr-text-sub);
 }
 
 .notification-popup-header > button {
@@ -153,13 +160,12 @@ const getNotificationTypeLabel = (
   border: 0;
   font-size: 11px;
   font-weight: 600;
-  color: #4164e9;
+  color: var(--tmr-primary);
   background: transparent;
-  cursor: pointer;
 }
 
 .notification-popup-header > button:disabled {
-  color: #b6bcc4;
+  color: var(--tmr-text-sub);
   cursor: default;
 }
 
@@ -169,28 +175,47 @@ const getNotificationTypeLabel = (
 }
 
 .notification-item {
-  display: grid;
-  grid-template-columns: 9px minmax(0, 1fr);
-  gap: 10px;
-  width: 100%;
-  padding: 15px 18px;
-  border: 0;
-  border-bottom: 1px solid #f0f2f5;
-  text-align: left;
-  background: #ffffff;
-  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--tmr-border);
+  background: var(--tmr-surface);
 }
 
 .notification-item:last-child {
   border-bottom: 0;
 }
 
-.notification-item.unread {
-  background: #f8faff;
+.notification-item:hover {
+  background: var(--tmr-surface-soft);
 }
 
-.notification-item:hover {
-  background: #f4f7fb;
+.notification-content-button {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 10px;
+  padding: 15px 10px 15px 18px;
+  border: 0;
+  text-align: left;
+  background: transparent;
+}
+
+.notification-move-button {
+  flex-shrink: 0;
+  margin-right: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--tmr-border);
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
+}
+
+.notification-move-button:hover {
+  border-color: var(--tmr-primary);
 }
 
 .notification-unread-dot {
@@ -198,7 +223,7 @@ const getNotificationTypeLabel = (
   height: 7px;
   margin-top: 7px;
   border-radius: 50%;
-  background: #3f67ef;
+  background: var(--tmr-primary);
 }
 
 .notification-unread-dot.hidden {
@@ -214,8 +239,8 @@ const getNotificationTypeLabel = (
 
 .notification-type {
   display: inline-flex;
-  align-items: center;
   min-height: 20px;
+  align-items: center;
   padding: 0 7px;
   border-radius: 5px;
   font-size: 9px;
@@ -223,8 +248,8 @@ const getNotificationTypeLabel = (
 }
 
 .notification-type.invitation {
-  color: #315ce8;
-  background: #eaf0ff;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .notification-type.trip-change {
@@ -246,13 +271,13 @@ const getNotificationTypeLabel = (
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.5;
-  color: #303741;
+  color: var(--tmr-text);
 }
 
 .notification-meta {
   margin-top: 6px;
   font-size: 10px;
-  color: #979fa9;
+  color: var(--tmr-text-sub);
 }
 
 .empty-notification {
@@ -265,7 +290,7 @@ const getNotificationTypeLabel = (
 .empty-notification p {
   margin: 0;
   font-size: 12px;
-  color: #959da7;
+  color: var(--tmr-text-sub);
 }
 
 @media (max-width: 760px) {
@@ -298,8 +323,14 @@ const getNotificationTypeLabel = (
     max-height: calc(100vh - 235px);
   }
 
-  .notification-item {
-    padding: 13px 15px;
+  .notification-content-button {
+    padding: 13px 8px 13px 15px;
+  }
+
+  .notification-move-button {
+    margin-right: 12px;
+    padding: 5px 7px;
+    font-size: 8px;
   }
 
   .notification-information strong {

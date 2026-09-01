@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Participant } from '@/composables/trips/useTripParticipants'
-
 import type {
   MapPhoto,
   TimelineGroup,
@@ -8,8 +7,8 @@ import type {
 
 import TripInfoCard from '@/components/trips/detail/overview/TripInfoCard.vue'
 import TripMapPreview from '@/components/trips/detail/overview/TripMapPreview.vue'
-import TripTimelinePreview from '@/components/trips/detail/overview/TripTimelinePreview.vue'
 import TripParticipantCard from '@/components/trips/detail/overview/TripParticipantCard.vue'
+import TripTimelinePreview from '@/components/trips/detail/overview/TripTimelinePreview.vue'
 
 defineProps<{
   tripTitle: string
@@ -68,9 +67,7 @@ const emit = defineEmits<{
       @open-participants="emit('open-participants')"
     />
 
-    <TripMapPreview
-      :photos="mapPhotos"
-    />
+    <TripMapPreview :photos="mapPhotos" />
 
     <TripTimelinePreview
       :timeline-groups="timelineGroups"

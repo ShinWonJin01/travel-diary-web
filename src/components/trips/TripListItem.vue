@@ -1,23 +1,15 @@
 <script setup lang="ts">
-import {
-  onBeforeUnmount,
-  ref,
-  watch,
-} from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { apiBlobRequest } from '@/api/http'
-import {
-  type TripListItem,
-  type TripRole,
-} from '@/api/trips'
+import { type TripListItem, type TripRole } from '@/api/trips'
 
 const props = defineProps<{
   trip: TripListItem
 }>()
 
 const router = useRouter()
-
 const coverImageUrl = ref('')
 
 const thumbnailClasses = [
@@ -26,33 +18,21 @@ const thumbnailClasses = [
   'thumbnail-busan',
 ]
 
-const getRoleLabel = (role: TripRole) => {
-  return role === 'OWNER'
-    ? '내가 만든 여행'
-    : '참여 중'
-}
+const getRoleLabel = (role: TripRole) =>
+  role === 'OWNER' ? '내가 만든 여행' : '참여 중'
 
-const formatDate = (date: string) => {
-  return date.replaceAll('-', '.')
-}
+const formatDate = (date: string) => date.replaceAll('-', '.')
 
 const formatPeriod = (trip: TripListItem) => {
   const startDate = formatDate(trip.startDate)
 
-  if (!trip.endDate) {
-    return `${startDate} - 종료일 미정`
-  }
+  if (!trip.endDate) return `${startDate} - 종료일 미정`
 
-  const endDate = formatDate(trip.endDate)
-
-  return `${startDate} - ${endDate}`
+  return `${startDate} - ${formatDate(trip.endDate)}`
 }
 
 const getThumbnailClass = (tripId: number) => {
-  const index =
-    Math.abs(tripId - 1)
-    % thumbnailClasses.length
-
+  const index = Math.abs(tripId - 1) % thumbnailClasses.length
   return thumbnailClasses[index]
 }
 
@@ -67,16 +47,12 @@ const revokeCoverImageUrl = () => {
 const loadCoverImage = async () => {
   revokeCoverImageUrl()
 
-  const coverImagePath =
-    props.trip.coverImagePath
-
-  if (!coverImagePath) {
-    return
-  }
+  const coverImagePath = props.trip.coverImagePath
+  if (!coverImagePath) return
 
   if (
-    coverImagePath.startsWith('http://')
-    || coverImagePath.startsWith('https://')
+    coverImagePath.startsWith('http://') ||
+    coverImagePath.startsWith('https://')
   ) {
     coverImageUrl.value = coverImagePath
     return
@@ -87,41 +63,28 @@ const loadCoverImage = async () => {
       `/api/trips/${props.trip.id}/cover-image/file`,
     )
 
-    coverImageUrl.value =
-      URL.createObjectURL(blob)
+    coverImageUrl.value = URL.createObjectURL(blob)
   } catch (error) {
-    console.error(
-      '대표 이미지를 불러오지 못했습니다.',
-      error,
-    )
+    console.error('대표 이미지를 불러오지 못했습니다.', error)
   }
 }
-
-watch(
-  () => [
-    props.trip.id,
-    props.trip.coverImagePath,
-  ],
-  () => {
-    void loadCoverImage()
-  },
-  {
-    immediate: true,
-  },
-)
-
-onBeforeUnmount(() => {
-  revokeCoverImageUrl()
-})
 
 const goToTripDetail = (tripId: number) => {
   void router.push({
     name: 'trip-detail',
-    params: {
-      id: tripId,
-    },
+    params: { id: tripId },
   })
 }
+
+watch(
+  [() => props.trip.id, () => props.trip.coverImagePath],
+  () => {
+    void loadCoverImage()
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(revokeCoverImageUrl)
 </script>
 
 <template>
@@ -133,10 +96,7 @@ const goToTripDetail = (tripId: number) => {
     @keydown.enter="goToTripDetail(trip.id)"
     @keydown.space.prevent="goToTripDetail(trip.id)"
   >
-    <div
-      class="trip-thumbnail"
-      :class="getThumbnailClass(trip.id)"
-    >
+    <div class="trip-thumbnail" :class="getThumbnailClass(trip.id)">
       <img
         v-if="trip.coverImagePath && coverImageUrl"
         :src="coverImageUrl"
@@ -144,14 +104,8 @@ const goToTripDetail = (tripId: number) => {
       />
 
       <template v-else>
-        <span
-          class="mountain mountain-back"
-        ></span>
-
-        <span
-          class="mountain mountain-front"
-        ></span>
-
+        <span class="mountain mountain-back"></span>
+        <span class="mountain mountain-front"></span>
         <span class="thumbnail-sun"></span>
       </template>
     </div>
@@ -171,14 +125,8 @@ const goToTripDetail = (tripId: number) => {
         </span>
       </div>
 
-      <p class="trip-destination">
-        {{ trip.destination }}
-      </p>
-
-      <p class="trip-period">
-        {{ formatPeriod(trip) }}
-      </p>
-
+      <p class="trip-destination">{{ trip.destination }}</p>
+      <p class="trip-period">{{ formatPeriod(trip) }}</p>
       <p class="trip-participants">
         참여자 {{ trip.participantCount }}명
       </p>
@@ -191,20 +139,28 @@ const goToTripDetail = (tripId: number) => {
   position: relative;
   display: grid;
   grid-template-columns: 132px minmax(0, 1fr);
+  min-height: 150px;
   align-items: center;
   gap: 22px;
-  min-height: 150px;
-  padding: 20px 8px;
-  border-bottom: 1px solid #e8ebf0;
+  padding: 20px 12px;
+  border-bottom: 1px solid var(--tmr-border);
+  border-radius: 12px;
   cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .trip-list-item:hover {
-  background: #fafbfe;
+  background: var(--tmr-surface-soft);
+}
+
+.trip-list-item:active {
+  transform: scale(0.995);
 }
 
 .trip-list-item:focus-visible {
-  outline: 2px solid #3264ed;
+  outline: 2px solid var(--tmr-primary);
   outline-offset: -2px;
 }
 
@@ -217,8 +173,8 @@ const goToTripDetail = (tripId: number) => {
   width: 132px;
   height: 100px;
   overflow: hidden;
-  border-radius: 10px;
-  background: #aac3da;
+  border-radius: 12px;
+  background: #9dbcf3;
 }
 
 .trip-thumbnail img {
@@ -228,27 +184,15 @@ const goToTripDetail = (tripId: number) => {
 }
 
 .thumbnail-tokyo {
-  background: linear-gradient(
-    145deg,
-    #9db6d0 0%,
-    #d7c0b2 100%
-  );
+  background: linear-gradient(145deg, #91b6ff, #f0b8a8);
 }
 
 .thumbnail-jeju {
-  background: linear-gradient(
-    145deg,
-    #82b8a5 0%,
-    #c8d892 100%
-  );
+  background: linear-gradient(145deg, #8ed3bd, #c9df96);
 }
 
 .thumbnail-busan {
-  background: linear-gradient(
-    145deg,
-    #7090b7 0%,
-    #d4b48d 100%
-  );
+  background: linear-gradient(145deg, #78a7dc, #f2bd91);
 }
 
 .mountain {
@@ -280,7 +224,7 @@ const goToTripDetail = (tripId: number) => {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .trip-information {
@@ -297,7 +241,8 @@ const goToTripDetail = (tripId: number) => {
 .trip-title-row h2 {
   margin: 0;
   font-size: 17px;
-  color: #242a34;
+  font-weight: 700;
+  color: var(--tmr-text);
 }
 
 .trip-role-badge {
@@ -312,45 +257,51 @@ const goToTripDetail = (tripId: number) => {
 }
 
 .trip-role-badge.owner {
-  color: #315ce8;
-  background: #edf1ff;
+  color: var(--tmr-primary-dark);
+  background: var(--tmr-surface-soft);
 }
 
 .trip-role-badge.participant {
-  color: #28745c;
-  background: #e8f7f1;
+  color: #2f8068;
+  background: #e9f7f2;
 }
 
 .trip-destination {
   margin: 9px 0 0;
   font-size: 13px;
-  color: #555f6d;
+  font-weight: 500;
+  color: var(--tmr-text);
 }
 
 .trip-period {
   margin: 6px 0 0;
   font-size: 13px;
-  color: #707986;
+  color: var(--tmr-text-sub);
 }
 
 .trip-participants {
   margin: 7px 0 0;
   font-size: 12px;
-  color: #9ba2ac;
+  color: var(--tmr-text-sub);
 }
 
 @media (max-width: 760px) {
   .trip-list-item {
     grid-template-columns: 92px minmax(0, 1fr);
-    gap: 13px;
     min-height: 112px;
+    gap: 13px;
     padding: 14px 0;
+    border-radius: 0;
+  }
+
+  .trip-list-item:hover {
+    background: transparent;
   }
 
   .trip-thumbnail {
     width: 92px;
     height: 74px;
-    border-radius: 8px;
+    border-radius: 9px;
   }
 
   .mountain {

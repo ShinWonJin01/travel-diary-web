@@ -11,10 +11,6 @@ const props = defineProps<{
 
 const isProfileImageBroken = ref(false)
 
-/*
- * 프로필 이미지가 변경되면
- * 이전 이미지의 오류 상태를 초기화
- */
 watch(
   () => props.profileImageUrl,
   () => {
@@ -25,11 +21,14 @@ watch(
 
 <template>
   <section class="profile-card">
-    <div class="profile-avatar">
+    <div 
+      class="profile-avatar" 
+      :class="{ 'has-image': profileImageUrl && !isProfileImageBroken }"
+    >
       <img
         v-if="profileImageUrl && !isProfileImageBroken"
         :src="profileImageUrl"
-        alt="프로필 사진"
+        :alt="`${member?.name ?? '사용자'} 프로필 사진`"
         @error="isProfileImageBroken = true"
       />
 
@@ -39,18 +38,10 @@ watch(
     </div>
 
     <div class="profile-information">
-      <h2>
-        {{ member?.name ?? '사용자' }}
-      </h2>
+      <h2>{{ member?.name ?? '사용자' }}</h2>
+      <p>{{ member?.email ?? '' }}</p>
 
-      <p>
-        {{ member?.email ?? '' }}
-      </p>
-
-      <span
-        v-if="member"
-        class="profile-nickname"
-      >
+      <span v-if="member" class="profile-nickname">
         {{ member.nickname }}
       </span>
     </div>
@@ -63,23 +54,27 @@ watch(
   align-items: center;
   gap: 20px;
   padding: 25px 26px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 5px 18px rgba(37, 54, 78, 0.06);
+  background: var(--tmr-surface);
+  box-shadow: 0 5px 18px rgba(49, 95, 217, 0.05);
 }
 
 .profile-avatar {
   display: flex;
+  width: 76px;
+  height: 76px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 76px;
-  height: 76px;
   overflow: hidden;
   border-radius: 50%;
-  color: #ffffff;
-  background: linear-gradient(145deg, #7798be, #4e6688);
+  color: var(--tmr-surface);
+  background: linear-gradient(
+    145deg,
+    var(--tmr-primary),
+    var(--tmr-primary-dark)
+  );
 }
 
 .profile-avatar span {
@@ -93,39 +88,51 @@ watch(
   object-fit: cover;
 }
 
+.profile-avatar.has-image {
+  background: transparent;
+}
+
 .profile-information {
   min-width: 0;
 }
 
 .profile-information h2 {
+  overflow: hidden;
   margin: 0;
   font-size: 21px;
-  color: #222934;
+  color: var(--tmr-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-information p {
+  overflow: hidden;
   margin: 7px 0 0;
   font-size: 13px;
-  color: #89919d;
+  color: var(--tmr-text-sub);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-nickname {
-  display: block;
-  margin-top: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #607087;
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  margin-top: 7px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
-
-/* =========================
-   모바일
-========================= */
 
 @media (max-width: 760px) {
   .profile-card {
     gap: 14px;
     padding: 17px;
     border-radius: 11px;
+    box-shadow: none;
   }
 
   .profile-avatar {
@@ -147,8 +154,10 @@ watch(
   }
 
   .profile-nickname {
-    margin-top: 4px;
-    font-size: 9px;
+    min-height: 20px;
+    margin-top: 5px;
+    padding: 0 7px;
+    font-size: 8px;
   }
 }
 </style>

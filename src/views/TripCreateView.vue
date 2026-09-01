@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 
 import { ApiError } from '@/api/http'
 import { createTrip, uploadTripCoverImage } from '@/api/trips'
-
 import TripBasicInfoSection from '@/components/trips/create/TripBasicInfoSection.vue'
 import TripCoverImageSection from '@/components/trips/create/TripCoverImageSection.vue'
 
@@ -29,7 +28,6 @@ const tripForm = ref<TripForm>({
 })
 
 const selectedImage = ref<File | null>(null)
-
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 
@@ -41,7 +39,7 @@ const handleCoverImageError = (message: string) => {
   errorMessage.value = message
 }
 
-const validateForm = (): string => {
+const validateForm = () => {
   const {
     title,
     startDate,
@@ -50,13 +48,8 @@ const validateForm = (): string => {
     location,
   } = tripForm.value
 
-  if (!title.trim()) {
-    return '여행 제목을 입력해 주세요.'
-  }
-
-  if (!startDate) {
-    return '여행 시작일을 선택해 주세요.'
-  }
+  if (!title.trim()) return '여행 제목을 입력해 주세요.'
+  if (!startDate) return '여행 시작일을 선택해 주세요.'
 
   if (!isEndDateUnknown && !endDate) {
     return '여행 종료일을 선택하거나 종료일 미정을 체크해 주세요.'
@@ -66,9 +59,7 @@ const validateForm = (): string => {
     return '종료일은 시작일보다 빠를 수 없습니다.'
   }
 
-  if (!location.trim()) {
-    return '대표 지역을 입력해 주세요.'
-  }
+  if (!location.trim()) return '대표 지역을 입력해 주세요.'
 
   return ''
 }
@@ -105,7 +96,7 @@ const handleCreateTrip = async () => {
     if (selectedImage.value) {
       try {
         await uploadTripCoverImage(createdTrip.id, selectedImage.value)
-      } catch (error: unknown) {
+      } catch (error) {
         const uploadErrorMessage =
           error instanceof ApiError
             ? error.message
@@ -122,13 +113,11 @@ const handleCreateTrip = async () => {
 
     window.alert('여행이 생성되었습니다.')
     await router.push(`/trips/${createdTrip.id}`)
-  } catch (error: unknown) {
-    if (error instanceof ApiError) {
-      errorMessage.value = error.message
-      return
-    }
-
-    errorMessage.value = '여행을 생성하는 중 오류가 발생했습니다.'
+  } catch (error) {
+    errorMessage.value =
+      error instanceof ApiError
+        ? error.message
+        : '여행을 생성하는 중 오류가 발생했습니다.'
   } finally {
     isSubmitting.value = false
   }
@@ -146,17 +135,14 @@ const cancelCreate = () => {
 
 <template>
   <section class="trip-create-page">
-    <!-- PC 화면 제목 -->
     <div class="desktop-page-heading">
       <p>CREATE TRIP</p>
       <h1>여행 만들기</h1>
     </div>
 
     <form class="trip-create-form" @submit.prevent="handleCreateTrip">
-      <!-- 기본 정보 -->
       <TripBasicInfoSection v-model="tripForm" />
 
-      <!-- 대표 이미지 -->
       <TripCoverImageSection
         :selected-image="selectedImage"
         @change="handleCoverImageChange"
@@ -168,11 +154,20 @@ const cancelCreate = () => {
       </p>
 
       <div class="form-actions">
-        <button class="cancel-button" type="button" :disabled="isSubmitting" @click="cancelCreate">
+        <button
+          class="cancel-button"
+          type="button"
+          :disabled="isSubmitting"
+          @click="cancelCreate"
+        >
           취소
         </button>
 
-        <button class="submit-button" type="submit" :disabled="isSubmitting">
+        <button
+          class="submit-button"
+          type="submit"
+          :disabled="isSubmitting"
+        >
           {{ isSubmitting ? '생성 중...' : '여행 만들기' }}
         </button>
       </div>
@@ -197,30 +192,29 @@ const cancelCreate = () => {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #4566e8;
+  color: var(--tmr-primary);
 }
 
 .desktop-page-heading h1 {
   margin: 0;
   font-size: 30px;
-  color: #1d2430;
+  color: var(--tmr-text);
 }
 
 .trip-create-form {
   display: grid;
-  gap: 22px;
   width: 100%;
+  gap: 22px;
 }
 
-/* 폼 오류 */
 .form-error {
   margin: 0;
   padding: 13px 15px;
-  border: 1px solid #f3c5cb;
+  border: 1px solid var(--tmr-accent);
   border-radius: 8px;
   font-size: 12px;
-  color: #c93d50;
-  background: #fff5f6;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
 }
 
 .form-actions {
@@ -236,7 +230,11 @@ const cancelCreate = () => {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .form-actions button:disabled {
@@ -245,20 +243,31 @@ const cancelCreate = () => {
 }
 
 .cancel-button {
-  border: 1px solid #d7dce4;
-  color: #65707d;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+}
+
+.cancel-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .submit-button {
   min-width: 128px;
-  border: 1px solid #405bf4;
-  color: #ffffff;
-  background: #405bf4;
+  border: 1px solid var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #304bea;
+  border-color: var(--tmr-primary-dark);
+  background: var(--tmr-primary-dark);
+}
+
+.form-actions button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 @media (max-width: 760px) {

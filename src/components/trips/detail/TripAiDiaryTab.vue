@@ -26,8 +26,8 @@ const emit = defineEmits<{
 
           <button
             v-if="isOwner"
-            type="button"
             class="primary-action-button"
+            type="button"
             :disabled="isGenerating"
             @click="emit('generate')"
           >
@@ -36,16 +36,19 @@ const emit = defineEmits<{
         </template>
 
         <template v-else>
-          <strong>사진과 타임라인을 바탕으로 여행기를 생성해보세요.</strong>
+          <strong>
+            사진과 타임라인을 바탕으로 여행기를 생성해보세요.
+          </strong>
 
           <p>
-            사진, 장소, 시간, 메모를 종합하여 자연스러운 여행 기록을 자동으로 만들어줍니다.
+            사진, 장소, 시간, 메모를 종합하여 자연스러운 여행 기록을
+            자동으로 만들어줍니다.
           </p>
 
           <button
             v-if="isOwner"
-            type="button"
             class="primary-action-button"
+            type="button"
             :disabled="isGenerating"
             @click="emit('generate')"
           >
@@ -64,25 +67,24 @@ const emit = defineEmits<{
 <style scoped>
 .panel-card {
   padding: 18px;
-  border: 1px solid #e6eaf2;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--tmr-surface);
+}
+
+.ai-panel {
+  padding-bottom: 22px;
 }
 
 .panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 16px;
 }
 
 .panel-heading h2 {
   margin: 0;
   font-size: 18px;
-  color: #222834;
+  color: var(--tmr-text);
 }
-
-.ai-panel { padding-bottom: 22px; }
 
 .ai-box {
   display: grid;
@@ -90,8 +92,13 @@ const emit = defineEmits<{
   align-items: center;
   gap: 18px;
   padding: 24px;
+  border: 1px solid var(--tmr-border);
   border-radius: 14px;
-  background: linear-gradient(145deg, #eef2ff, #fafbff);
+  background: linear-gradient(
+    145deg,
+    var(--tmr-surface-soft),
+    var(--tmr-surface)
+  );
 }
 
 .ai-badge {
@@ -103,26 +110,39 @@ const emit = defineEmits<{
   font-size: 28px;
   font-weight: 800;
   color: #ffffff;
-  background: linear-gradient(145deg, #5c79f0, #7d63c9);
+  background: linear-gradient(
+    145deg,
+    var(--tmr-primary),
+    #8275d1
+  );
+  box-shadow: 0 8px 20px
+    color-mix(in srgb, var(--tmr-primary) 18%, transparent);
 }
 
-.ai-diary-content { white-space: pre-wrap; }
+.ai-content {
+  min-width: 0;
+}
 
 .ai-content strong {
   font-size: 18px;
-  color: #252b37;
+  line-height: 1.5;
+  color: var(--tmr-text);
 }
 
 .ai-content p {
   margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.7;
-  color: #6e7887;
+  color: var(--tmr-text-sub);
 }
 
-.ai-owner-guide {
+.ai-diary-content {
+  white-space: pre-wrap;
+}
+
+.ai-content .ai-owner-guide {
   font-weight: 600;
-  color: #8a93a2;
+  color: var(--tmr-text-sub);
 }
 
 .primary-action-button {
@@ -133,14 +153,25 @@ const emit = defineEmits<{
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
-  color: #ffffff;
-  background: #3565f3;
-  cursor: pointer;
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease,
+    opacity 0.2s ease;
+}
+
+.primary-action-button:hover:not(:disabled) {
+  background: var(--tmr-primary-dark);
+}
+
+.primary-action-button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .primary-action-button:disabled {
-  opacity: 0.6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 @media (max-width: 760px) {
@@ -150,13 +181,19 @@ const emit = defineEmits<{
     border-radius: 10px;
   }
 
-  .panel-heading { margin-bottom: 10px; }
-  .panel-heading h2 { font-size: 14px; }
+  .panel-heading {
+    margin-bottom: 10px;
+  }
+
+  .panel-heading h2 {
+    font-size: 14px;
+  }
 
   .ai-box {
     grid-template-columns: 1fr;
     gap: 12px;
     padding: 15px;
+    border-radius: 10px;
   }
 
   .ai-badge {
@@ -168,7 +205,6 @@ const emit = defineEmits<{
 
   .ai-content strong {
     font-size: 13px;
-    line-height: 1.5;
   }
 
   .ai-content p {
@@ -179,6 +215,7 @@ const emit = defineEmits<{
   .primary-action-button {
     height: 39px;
     margin-top: 13px;
+    padding: 0 14px;
     font-size: 11px;
   }
 }

@@ -36,9 +36,9 @@ defineProps<{
   align-items: center;
   margin-top: 18px;
   padding: 20px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .summary-item {
@@ -50,24 +50,26 @@ defineProps<{
 
 .summary-item strong {
   font-size: 20px;
-  color: #315ce8;
+  font-weight: 700;
+  color: var(--tmr-primary);
 }
 
 .summary-item span {
   font-size: 12px;
-  color: #7e8794;
+  color: var(--tmr-text-sub);
 }
 
 .summary-divider {
   width: 1px;
   height: 34px;
-  background: #e5e9ef;
+  background: var(--tmr-border);
 }
 
 @media (max-width: 760px) {
   .trip-summary {
     margin-top: 13px;
     padding: 16px 7px;
+    border-radius: 10px;
   }
 
   .summary-item {

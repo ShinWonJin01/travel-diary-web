@@ -18,9 +18,7 @@ const isSaving = ref(false)
 const errorMessage = ref('')
 
 const closeModal = () => {
-  if (isSaving.value) {
-    return
-  }
+  if (isSaving.value) return
 
   emit('close')
 }
@@ -32,6 +30,7 @@ const loadSettings = async () => {
   try {
     settings.value = await getMemberSettings()
   } catch (error: unknown) {
+    settings.value = null
     errorMessage.value =
       error instanceof ApiError
         ? error.message
@@ -42,9 +41,9 @@ const loadSettings = async () => {
 }
 
 const saveSettings = async () => {
-  if (!settings.value || isSaving.value) {
-    return
-  }
+  const currentSettings = settings.value
+
+  if (!currentSettings || isSaving.value) return
 
   isSaving.value = true
   errorMessage.value = ''
@@ -52,9 +51,9 @@ const saveSettings = async () => {
   try {
     settings.value = await updateMemberSettings({
       invitationNotificationEnabled:
-        settings.value.invitationNotificationEnabled,
+        currentSettings.invitationNotificationEnabled,
       activityNotificationEnabled:
-        settings.value.activityNotificationEnabled,
+        currentSettings.activityNotificationEnabled,
     })
 
     window.alert('알림 설정을 저장했습니다.')
@@ -88,26 +87,23 @@ onMounted(() => {
       <header class="settings-modal-header">
         <div>
           <p>NOTIFICATION</p>
-          <h2 id="notification-settings-title">
-            알림 설정
-          </h2>
+          <h2 id="notification-settings-title">알림 설정</h2>
         </div>
 
         <button
           class="settings-modal-close"
           type="button"
           aria-label="알림 설정 창 닫기"
+          :disabled="isSaving"
           @click="closeModal"
         >
           ×
         </button>
       </header>
 
-      <div
-        v-if="isLoading"
-        class="settings-state"
-      >
-        알림 설정을 불러오는 중입니다.
+      <div v-if="isLoading" class="settings-state">
+        <span class="settings-loading-spinner"></span>
+        <span>알림 설정을 불러오는 중입니다.</span>
       </div>
 
       <template v-else-if="settings">
@@ -120,11 +116,15 @@ onMounted(() => {
               </span>
             </div>
 
-            <label class="toggle">
+            <label
+              class="toggle"
+              :class="{ disabled: isSaving }"
+            >
               <input
                 v-model="settings.invitationNotificationEnabled"
                 type="checkbox"
                 :disabled="isSaving"
+                aria-label="여행 초대 알림"
               />
               <span class="toggle-slider"></span>
             </label>
@@ -138,11 +138,15 @@ onMounted(() => {
               </span>
             </div>
 
-            <label class="toggle">
+            <label
+              class="toggle"
+              :class="{ disabled: isSaving }"
+            >
               <input
                 v-model="settings.activityNotificationEnabled"
                 type="checkbox"
                 :disabled="isSaving"
+                aria-label="여행 활동 알림"
               />
               <span class="toggle-slider"></span>
             </label>
@@ -152,6 +156,7 @@ onMounted(() => {
         <p
           v-if="errorMessage"
           class="settings-error-message"
+          role="alert"
         >
           {{ errorMessage }}
         </p>
@@ -180,13 +185,11 @@ onMounted(() => {
       <div
         v-else
         class="settings-state settings-error-state"
+        role="alert"
       >
         <p>{{ errorMessage }}</p>
 
-        <button
-          type="button"
-          @click="loadSettings"
-        >
+        <button type="button" @click="loadSettings">
           다시 시도
         </button>
       </div>
@@ -208,10 +211,13 @@ onMounted(() => {
 
 .settings-modal {
   width: min(460px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   padding: 24px;
+  border: 1px solid var(--tmr-border);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(26, 36, 53, 0.24);
+  background: var(--tmr-surface);
+  box-shadow: 0 24px 70px rgba(36, 48, 66, 0.22);
 }
 
 .settings-modal-header {
@@ -226,13 +232,13 @@ onMounted(() => {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #4566e8;
+  color: var(--tmr-primary);
 }
 
 .settings-modal-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #222934;
+  color: var(--tmr-text);
 }
 
 .settings-modal-close {
@@ -243,16 +249,24 @@ onMounted(() => {
   border-radius: 9px;
   font-size: 23px;
   line-height: 1;
-  color: #747e8c;
-  background: #f3f5f8;
-  cursor: pointer;
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface-soft);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.settings-modal-close:hover:not(:disabled) {
+  color: var(--tmr-primary);
+  background: var(--tmr-background);
 }
 
 .settings-list {
-  margin-top: 24px;
   overflow: hidden;
-  border: 1px solid #e4e8ee;
+  margin-top: 24px;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
+  background: var(--tmr-surface);
 }
 
 .settings-item {
@@ -262,11 +276,11 @@ onMounted(() => {
   justify-content: space-between;
   gap: 20px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--tmr-surface);
 }
 
 .settings-item + .settings-item {
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid var(--tmr-border);
 }
 
 .settings-information {
@@ -279,21 +293,25 @@ onMounted(() => {
 
 .settings-information strong {
   font-size: 13px;
-  color: #28313d;
+  color: var(--tmr-text);
 }
 
 .settings-information span {
   font-size: 10px;
   line-height: 1.5;
-  color: #939ca8;
+  color: var(--tmr-text-sub);
 }
 
 .toggle {
   position: relative;
-  flex-shrink: 0;
   width: 42px;
   height: 24px;
+  flex-shrink: 0;
   cursor: pointer;
+}
+
+.toggle.disabled {
+  cursor: not-allowed;
 }
 
 .toggle input {
@@ -307,8 +325,8 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: #d8dde5;
-  transition: 0.2s;
+  background: var(--tmr-border);
+  transition: background 0.2s ease;
 }
 
 .toggle-slider::before {
@@ -318,62 +336,92 @@ onMounted(() => {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(35, 44, 58, 0.22);
-  transition: 0.2s;
   content: '';
+  background: var(--tmr-surface);
+  box-shadow: 0 1px 4px rgba(36, 48, 66, 0.22);
+  transition: transform 0.2s ease;
 }
 
 .toggle input:checked + .toggle-slider {
-  background: #4566e8;
+  background: var(--tmr-primary);
 }
 
 .toggle input:checked + .toggle-slider::before {
   transform: translateX(18px);
 }
 
+.toggle input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tmr-primary) 16%, transparent);
+}
+
 .toggle input:disabled + .toggle-slider {
-  cursor: not-allowed;
   opacity: 0.6;
 }
 
 .settings-state {
+  display: flex;
+  min-height: 110px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
   margin-top: 24px;
   padding: 24px 16px;
-  border: 1px solid #e4e8ee;
+  border: 1px solid var(--tmr-border);
   border-radius: 12px;
   font-size: 11px;
-  color: #7d8794;
+  color: var(--tmr-text-sub);
   text-align: center;
+  background: var(--tmr-surface);
+}
+
+.settings-loading-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid var(--tmr-border);
+  border-top-color: var(--tmr-primary);
+  border-radius: 50%;
+  animation: settings-spin 0.8s linear infinite;
 }
 
 .settings-error-state {
-  display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 12px;
 }
 
 .settings-error-state p {
   margin: 0;
+  color: var(--tmr-accent);
 }
 
 .settings-error-state button {
   height: 34px;
   padding: 0 12px;
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--tmr-border);
   border-radius: 8px;
   font-size: 10px;
-  color: #586575;
-  background: #ffffff;
-  cursor: pointer;
+  font-weight: 700;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.settings-error-state button:hover {
+  border-color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .settings-error-message {
   margin: 12px 0 0;
+  padding: 9px 10px;
+  border-radius: 7px;
   font-size: 10px;
   line-height: 1.5;
-  color: #c74658;
+  color: var(--tmr-accent);
+  background: var(--tmr-accent-soft);
 }
 
 .settings-actions {
@@ -390,29 +438,51 @@ onMounted(() => {
   border-radius: 9px;
   font-size: 10px;
   font-weight: 700;
-  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .settings-cancel-button {
-  border: 1px solid #dce2ea;
-  color: #66717f;
-  background: #ffffff;
+  border: 1px solid var(--tmr-border);
+  color: var(--tmr-text-sub);
+  background: var(--tmr-surface);
+}
+
+.settings-cancel-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary);
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
 }
 
 .settings-save-button {
-  border: 0;
-  color: #ffffff;
-  background: #4566e8;
+  border: 1px solid var(--tmr-primary);
+  color: var(--tmr-surface);
+  background: var(--tmr-primary);
 }
 
-.settings-save-button:hover {
-  background: #3858d2;
+.settings-save-button:hover:not(:disabled) {
+  border-color: var(--tmr-primary-dark);
+  background: var(--tmr-primary-dark);
 }
 
+.settings-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.settings-modal-close:disabled,
 .settings-cancel-button:disabled,
 .settings-save-button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+@keyframes settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 760px) {
@@ -423,7 +493,11 @@ onMounted(() => {
 
   .settings-modal {
     width: 100%;
+    max-height: 90vh;
     padding: 20px 17px 24px;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
     border-radius: 18px 18px 0 0;
   }
 
@@ -449,14 +523,19 @@ onMounted(() => {
     font-size: 9px;
   }
 
+  .settings-state {
+    min-height: 100px;
+    margin-top: 20px;
+  }
+
   .settings-actions {
     margin-top: 16px;
   }
 
   .settings-cancel-button,
   .settings-save-button {
-    flex: 1;
     height: 42px;
+    flex: 1;
   }
 }
 </style>
