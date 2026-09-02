@@ -3,7 +3,9 @@ import { apiRequest } from './http'
 export interface RecentActivity {
   tripId: number
   tripTitle: string
+  actorId: number
   actorNickname: string
+  actorProfileImagePath: string | null
   photoCount: number
   createdAt: string
 }

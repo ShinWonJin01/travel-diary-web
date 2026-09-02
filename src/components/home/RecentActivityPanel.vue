@@ -1,11 +1,63 @@
 <script setup lang="ts">
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import type { RecentActivity } from '@/api/home'
+import { apiBlobRequest } from '@/api/http'
 
-defineProps<{
+const props = defineProps<{
   activities: RecentActivity[]
 }>()
+
+const profileImageUrls = ref<Record<number, string>>({})
+
+const revokeProfileImageUrls = () => {
+  Object.values(profileImageUrls.value).forEach((url) => {
+    if (url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
+    }
+  })
+
+  profileImageUrls.value = {}
+}
+
+const loadProfileImages = async () => {
+  revokeProfileImageUrls()
+
+  const uniqueActivities = [
+    ...new Map(
+      props.activities
+        .filter((activity) => activity.actorProfileImagePath)
+        .map((activity) => [activity.actorId, activity]),
+    ).values(),
+  ]
+
+  await Promise.all(
+    uniqueActivities.map(async (activity) => {
+      const path = activity.actorProfileImagePath
+      if (!path) return
+
+      if (
+        path.startsWith('http://') ||
+        path.startsWith('https://')
+      ) {
+        profileImageUrls.value[activity.actorId] = path
+        return
+      }
+
+      try {
+        const blob = await apiBlobRequest(
+          `/api/members/${activity.actorId}/profile-image/file`,
+        )
+
+        profileImageUrls.value[activity.actorId] =
+          URL.createObjectURL(blob)
+      } catch {
+        // 프로필 이미지가 없으면 기본 아이콘 표시
+      }
+    }),
+  )
+}
 
 const getActivityMessage = (activity: RecentActivity) => {
   if (activity.photoCount === 1) return '사진을 추가했습니다.'
@@ -33,6 +85,16 @@ const formatActivityTime = (createdAt: string) => {
     day: 'numeric',
   })
 }
+
+watch(
+  () => props.activities,
+  () => {
+    void loadProfileImages()
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(revokeProfileImageUrls)
 </script>
 
 <template>
@@ -47,7 +109,13 @@ const formatActivityTime = (createdAt: string) => {
         :to="`/trips/${activity.tripId}`"
       >
         <div class="activity-profile">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
+          <img
+            v-if="profileImageUrls[activity.actorId]"
+            :src="profileImageUrls[activity.actorId]"
+            :alt="`${activity.actorNickname} 프로필 사진`"
+          />
+
+          <svg v-else viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="8" r="4" />
             <path d="M4 22c0-5 3-8 8-8s8 3 8 8" />
           </svg>
@@ -58,8 +126,10 @@ const formatActivityTime = (createdAt: string) => {
             <strong>{{ activity.actorNickname }}님이</strong>
             {{ getActivityMessage(activity) }}
           </p>
+
           <span>
-            {{ activity.tripTitle }} · {{ formatActivityTime(activity.createdAt) }}
+            {{ activity.tripTitle }} ·
+            {{ formatActivityTime(activity.createdAt) }}
           </span>
         </div>
       </RouterLink>
@@ -72,6 +142,7 @@ const formatActivityTime = (createdAt: string) => {
           <path d="M12 8v4l3 2" />
         </svg>
       </div>
+
       <p>아직 최근 활동이 없습니다.</p>
     </div>
 
@@ -126,6 +197,7 @@ const formatActivityTime = (createdAt: string) => {
   height: 42px;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border: 1px solid var(--tmr-border);
   border-radius: 50%;
   color: var(--tmr-primary);
@@ -133,6 +205,12 @@ const formatActivityTime = (createdAt: string) => {
   transition:
     color 0.2s ease,
     background 0.2s ease;
+}
+
+.activity-profile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .activity-profile svg {
