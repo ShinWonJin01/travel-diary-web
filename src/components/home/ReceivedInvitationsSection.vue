@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 
 interface ReceivedInvitation {
@@ -11,9 +12,17 @@ interface ReceivedInvitation {
   theme: string
 }
 
-defineProps<{
+const props = defineProps<{
   invitations: ReceivedInvitation[]
 }>()
+
+const visibleInvitations = computed(() =>
+  props.invitations.slice(0, 5),
+)
+
+const remainingInvitationCount = computed(() =>
+  Math.max(props.invitations.length - 5, 0),
+)
 </script>
 
 <template>
@@ -34,7 +43,7 @@ defineProps<{
 
     <div v-if="invitations.length > 0" class="invitation-list">
       <article
-        v-for="invitation in invitations"
+        v-for="invitation in visibleInvitations"
         :key="invitation.id"
         class="invitation-item"
       >
@@ -70,6 +79,17 @@ defineProps<{
           초대 확인
         </RouterLink>
       </article>
+
+      <RouterLink
+        v-if="remainingInvitationCount > 0"
+        class="invitation-more"
+        to="/invitations"
+      >
+        <span>
+          + {{ remainingInvitationCount }}개의 초대가 더 있어요
+        </span>
+        <span aria-hidden="true">›</span>
+      </RouterLink>
     </div>
 
     <div v-else class="invitation-empty">
@@ -164,6 +184,25 @@ defineProps<{
 }
 
 .invitation-item:hover {
+  background: var(--tmr-surface-soft);
+}
+
+.invitation-more {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 16px;
+  border-top: 1px solid var(--tmr-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface);
+  transition: background 0.2s ease;
+}
+
+.invitation-more:hover {
   background: var(--tmr-surface-soft);
 }
 
@@ -350,6 +389,12 @@ defineProps<{
 
   .invitation-item:hover {
     background: transparent;
+  }
+
+  .invitation-more {
+    min-height: 38px;
+    padding: 0;
+    font-size: 9px;
   }
 
   .invitation-thumbnail {

@@ -122,19 +122,22 @@ const loadReceivedInvitations = async () => {
   try {
     const invitations = await getReceivedInvitations()
 
-    receivedInvitations.value = invitations
-      .slice(0, 2)
-      .map((invitation, index) => ({
+    receivedInvitations.value = invitations.map(
+      (invitation, index) => ({
         id: invitation.invitationId,
         tripId: invitation.tripId,
         title: invitation.tripTitle,
         inviter: invitation.inviterNickname,
         participants: invitation.currentParticipantCount,
-        period: formatTripPeriod(invitation.startDate, invitation.endDate),
+        period: formatTripPeriod(
+          invitation.startDate,
+          invitation.endDate,
+        ),
         theme:
           invitationThemes[index % invitationThemes.length] ??
           'invitation-theme-blue',
-      }))
+      }),
+    )
   } catch {
     receivedInvitations.value = []
   }
