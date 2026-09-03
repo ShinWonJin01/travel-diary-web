@@ -106,11 +106,6 @@ const hasPhotoMenu = (photo: PhotoItem) =>
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.2s ease;
-}
-
-.photo-card:hover .photo-card-image {
-  transform: scale(1.02);
 }
 
 .photo-menu-button {
@@ -124,16 +119,18 @@ const hasPhotoMenu = (photo: PhotoItem) =>
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  font-size: 18px;
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1;
   color: #ffffff;
-  background: rgba(36, 48, 66, 0.68);
-  transition: background 0.2s ease;
+  background: transparent;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65);
+  transition: background 0.15s ease;
 }
 
 .photo-menu-button:hover {
-  background: rgba(36, 48, 66, 0.88);
+  background: rgba(19, 27, 39, 0.22);
 }
 
 .photo-menu {
@@ -259,7 +256,7 @@ const hasPhotoMenu = (photo: PhotoItem) =>
     right: 7px;
     width: 24px;
     height: 24px;
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .photo-menu {

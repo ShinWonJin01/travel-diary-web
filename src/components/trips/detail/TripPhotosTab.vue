@@ -5,6 +5,8 @@ import PhotoDetailModal from '@/components/trips/detail/photos/PhotoDetailModal.
 import TripPhotoCard from '@/components/trips/detail/photos/TripPhotoCard.vue'
 import type { PhotoItem } from '@/composables/trips/useTripPhotos'
 
+const DRAG_THRESHOLD = 5
+
 const props = defineProps<{
   photos: PhotoItem[]
 }>()
@@ -27,6 +29,11 @@ const menuPhotoId = ref<number | null>(null)
 const isSelectionMode = ref(false)
 const selectedPhotoIds = ref<number[]>([])
 
+let draggingRow: HTMLElement | null = null
+let dragStartX = 0
+let dragStartScrollLeft = 0
+let didDrag = false
+
 const selectedPhoto = computed(
   () =>
     props.photos.find((photo) => photo.id === selectedPhotoId.value) ?? null,
@@ -38,6 +45,43 @@ const selectablePhotoCount = computed(
 
 const selectedPhotoCount = computed(() => selectedPhotoIds.value.length)
 
+const groupedPhotos = computed(() => {
+  const groups = new Map<string, PhotoItem[]>()
+
+  const sortedPhotos = [...props.photos].sort((a, b) => {
+    if (!a.takenAt && !b.takenAt) return 0
+    if (!a.takenAt) return 1
+    if (!b.takenAt) return -1
+    return a.takenAt.localeCompare(b.takenAt)
+  })
+
+  sortedPhotos.forEach((photo) => {
+    const dateKey = photo.takenAt?.slice(0, 10) || 'unknown'
+    const group = groups.get(dateKey)
+
+    if (group) {
+      group.push(photo)
+      return
+    }
+
+    groups.set(dateKey, [photo])
+  })
+
+  return Array.from(groups, ([dateKey, photos]) => ({
+    dateKey,
+    photos,
+  }))
+})
+
+const formatPhotoDate = (dateKey: string) => {
+  if (dateKey === 'unknown') return '촬영일 미상'
+
+  const month = Number(dateKey.slice(5, 7))
+  const day = Number(dateKey.slice(8, 10))
+
+  return `${month}월 ${day}일`
+}
+
 const isPhotoSelected = (photoId: number) =>
   selectedPhotoIds.value.includes(photoId)
 
@@ -48,6 +92,11 @@ const closePhotoMenu = () => {
 const closePhotoModal = () => {
   selectedPhotoId.value = null
   closePhotoMenu()
+}
+
+const clearSelection = () => {
+  isSelectionMode.value = false
+  selectedPhotoIds.value = []
 }
 
 const handlePhotoClick = (photo: PhotoItem) => {
@@ -64,12 +113,11 @@ const toggleSelectionMode = () => {
   closePhotoMenu()
 
   if (isSelectionMode.value) {
-    isSelectionMode.value = false
-    selectedPhotoIds.value = []
+    clearSelection()
     return
   }
 
-  closePhotoModal()
+  selectedPhotoId.value = null
   isSelectionMode.value = true
 }
 
@@ -90,8 +138,7 @@ const deleteSelectedPhotos = () => {
   if (selectedPhotoCount.value === 0) return
 
   emit('deletePhotos', [...selectedPhotoIds.value])
-  isSelectionMode.value = false
-  selectedPhotoIds.value = []
+  clearSelection()
 }
 
 const togglePhotoMenu = (photoId: number) => {
@@ -126,6 +173,82 @@ const handleModalLocationUpdate = (
   locationName: string | null,
 ) => {
   emit('updateLocation', photoId, latitude, longitude, locationName)
+}
+
+const handlePhotoRowWheel = (event: WheelEvent) => {
+  const target = event.currentTarget as HTMLElement
+  const maxScrollLeft = target.scrollWidth - target.clientWidth
+
+  if (maxScrollLeft <= 0) return
+
+  const delta =
+    Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      ? event.deltaX
+      : event.deltaY * 1.6
+
+  const canScroll =
+    delta > 0
+      ? target.scrollLeft < maxScrollLeft
+      : target.scrollLeft > 0
+
+  if (!canScroll) return
+
+  event.preventDefault()
+  target.scrollLeft += delta
+}
+
+const startPhotoRowDrag = (event: PointerEvent) => {
+  if (event.pointerType !== 'mouse' || event.button !== 0) return
+
+  if (
+    event.target instanceof Element &&
+    event.target.closest('button, [role="menu"]')
+  ) {
+    return
+  }
+
+  const target = event.currentTarget as HTMLElement
+
+  draggingRow = target
+  dragStartX = event.clientX
+  dragStartScrollLeft = target.scrollLeft
+  didDrag = false
+
+  target.setPointerCapture(event.pointerId)
+}
+
+const movePhotoRowDrag = (event: PointerEvent) => {
+  if (!draggingRow) return
+
+  const distance = event.clientX - dragStartX
+
+  if (!didDrag && Math.abs(distance) < DRAG_THRESHOLD) return
+
+  didDrag = true
+  event.preventDefault()
+  draggingRow.scrollLeft = dragStartScrollLeft - distance
+}
+
+const endPhotoRowDrag = (event: PointerEvent) => {
+  if (!draggingRow) return
+
+  if (draggingRow.hasPointerCapture(event.pointerId)) {
+    draggingRow.releasePointerCapture(event.pointerId)
+  }
+
+  draggingRow = null
+
+  window.setTimeout(() => {
+    didDrag = false
+  }, 0)
+}
+
+const preventPhotoClickAfterDrag = (event: MouseEvent) => {
+  if (!didDrag) return
+
+  event.preventDefault()
+  event.stopPropagation()
+  didDrag = false
 }
 
 onMounted(() => {
@@ -187,20 +310,52 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="photos.length > 0" class="photo-grid">
-      <TripPhotoCard
-        v-for="photo in photos"
-        :key="photo.id"
-        :photo="photo"
-        :is-selection-mode="isSelectionMode"
-        :is-selected="isPhotoSelected(photo.id)"
-        :is-menu-open="menuPhotoId === photo.id"
-        @click="handlePhotoClick(photo)"
-        @toggle-menu="togglePhotoMenu(photo.id)"
-        @edit="openPhotoEdit(photo.id)"
-        @delete="deleteSinglePhoto(photo.id)"
-        @toggle-selection="togglePhotoSelection(photo)"
-      />
+    <div v-if="photos.length > 0" class="photo-date-groups">
+      <section
+        v-for="group in groupedPhotos"
+        :key="group.dateKey"
+        class="photo-date-group"
+      >
+        <div class="photo-date-heading">
+          <strong>{{ formatPhotoDate(group.dateKey) }}</strong>
+          <span>{{ group.photos.length }}장</span>
+        </div>
+
+        <div
+          class="photo-stack-scroll"
+          @wheel="handlePhotoRowWheel"
+          @pointerdown="startPhotoRowDrag"
+          @pointermove="movePhotoRowDrag"
+          @pointerup="endPhotoRowDrag"
+          @pointercancel="endPhotoRowDrag"
+          @click.capture="preventPhotoClickAfterDrag"
+          @dragstart.prevent
+        >
+          <div
+            class="photo-stack"
+            :class="{ 'photo-stack-selection': isSelectionMode }"
+          >
+            <div
+              v-for="(photo, index) in group.photos"
+              :key="photo.id"
+              class="photo-stack-item"
+              :style="{ zIndex: group.photos.length - index }"
+            >
+              <TripPhotoCard
+                :photo="photo"
+                :is-selection-mode="isSelectionMode"
+                :is-selected="isPhotoSelected(photo.id)"
+                :is-menu-open="menuPhotoId === photo.id"
+                @click="handlePhotoClick(photo)"
+                @toggle-menu="togglePhotoMenu(photo.id)"
+                @edit="openPhotoEdit(photo.id)"
+                @delete="deleteSinglePhoto(photo.id)"
+                @toggle-selection="togglePhotoSelection(photo)"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <div v-else class="photo-empty">
@@ -242,7 +397,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .panel-heading h2 {
@@ -300,10 +455,86 @@ onBeforeUnmount(() => {
   transform: scale(0.98);
 }
 
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+.photo-date-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.photo-date-group {
+  min-width: 0;
+}
+
+.photo-date-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 11px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--tmr-border);
+}
+
+.photo-date-heading strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tmr-text);
+}
+
+.photo-date-heading span {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--tmr-text-sub);
+}
+
+.photo-stack-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 8px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.photo-stack-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.photo-stack {
+  --photo-overlap: 52px;
+
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
+}
+
+.photo-stack-item {
+  position: relative;
+  width: 270px;
+  flex: 0 0 270px;
+  transition:
+    margin 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.25s ease;
+}
+
+.photo-stack-item + .photo-stack-item {
+  margin-left: calc(var(--photo-overlap) * -1);
+}
+
+.photo-stack-item:hover,
+.photo-stack-item:focus-within {
+  z-index: 100 !important;
+  transform: translateY(-2px) scale(1.01);
+}
+
+.photo-stack-selection {
+  gap: 12px;
+}
+
+.photo-stack-selection .photo-stack-item {
+  margin-left: 0;
 }
 
 .photo-empty {
@@ -315,7 +546,6 @@ onBeforeUnmount(() => {
   gap: 7px;
   border: 1px dashed var(--tmr-border);
   border-radius: 12px;
-  color: var(--tmr-text-sub);
   background: var(--tmr-surface);
 }
 
@@ -382,6 +612,16 @@ onBeforeUnmount(() => {
   opacity: 0.45;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .photo-stack-scroll {
+    cursor: grab;
+  }
+
+  .photo-stack-scroll:active {
+    cursor: grabbing;
+  }
+}
+
 @media (max-width: 760px) {
   .panel-card {
     margin: 10px 10px 0;
@@ -390,7 +630,7 @@ onBeforeUnmount(() => {
   }
 
   .panel-heading {
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
 
   .panel-heading h2 {
@@ -408,9 +648,44 @@ onBeforeUnmount(() => {
     font-size: 10px;
   }
 
-  .photo-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .photo-date-groups {
+    gap: 20px;
+  }
+
+  .photo-date-heading {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+
+  .photo-date-heading strong {
+    font-size: 12px;
+  }
+
+  .photo-date-heading span {
+    font-size: 9px;
+  }
+
+  .photo-stack-scroll {
+    margin-right: -11px;
+    padding-right: 11px;
+  }
+
+  .photo-stack {
+    --photo-overlap: 20px;
+  }
+
+  .photo-stack-item {
+    width: 162px;
+    flex-basis: 162px;
+  }
+
+  .photo-stack-selection {
     gap: 8px;
+  }
+
+  .photo-stack-item:hover,
+  .photo-stack-item:focus-within {
+    transform: none;
   }
 
   .photo-empty {
