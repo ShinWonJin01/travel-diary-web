@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import AuthShell from '@/components/AuthShell.vue'
+
 import { login } from '@/api/auth'
 import { ApiError } from '@/api/http'
+import AuthShell from '@/components/AuthShell.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,17 +16,18 @@ const showPassword = ref(false)
 const formError = ref('')
 const isSubmitting = ref(false)
 
-const isRegistered = computed(() => {
-  return route.query.registered === 'true'
-})
+const isRegistered = computed(() => route.query.registered === 'true')
 
-const isPasswordReset = computed(() => {
-  return route.query.passwordReset === 'true'
-})
+const isPasswordReset = computed(
+  () => route.query.passwordReset === 'true',
+)
 
-const isValidEmail = (value: string) => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-}
+const isSessionExpired = computed(
+  () => route.query.expired === '1',
+)
+
+const isValidEmail = (value: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
 const handleLogin = async () => {
   formError.value = ''
@@ -78,6 +80,10 @@ const handleLogin = async () => {
     title="로그인"
     description="로그인하고 친구들과 함께 여행 기록을 시작해 보세요."
   >
+    <p v-if="isSessionExpired" class="auth-error">
+      로그인 시간이 만료되었습니다. 다시 로그인해 주세요.
+    </p>
+
     <p v-if="isRegistered" class="auth-success">
       회원가입이 완료되었습니다. 로그인해 주세요.
     </p>
@@ -139,7 +145,7 @@ const handleLogin = async () => {
         {{ formError }}
       </p>
 
-      <button 
+      <button
         class="auth-submit"
         type="submit"
         :disabled="isSubmitting"
