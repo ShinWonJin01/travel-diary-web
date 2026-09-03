@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { Language, MaptilerLayer } from '@maptiler/leaflet-maptilersdk'
 import L from 'leaflet'
 
 import type { LocationSearchResult } from '@/api/geocoding'
 import LocationSearch from '@/components/trips/LocationSearch.vue'
 
 import 'leaflet/dist/leaflet.css'
+
+const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY
+const MAPTILER_MAP_ID = '01a06816-6944-7f4c-9c04-68146a27ca8e'
+const TMR_PRIMARY = '#4f7cff'
 
 interface PhotoItem {
   id: number
@@ -77,7 +82,9 @@ const startTakenAtEdit = () => {
 }
 
 const saveTakenAt = () => {
-  const takenAt = takenAtDraft.value ? `${takenAtDraft.value}:00` : null
+  const takenAt = takenAtDraft.value
+    ? `${takenAtDraft.value}:00`
+    : null
 
   emit('updateTakenAt', props.photo.id, takenAt)
   resetEdit()
@@ -93,7 +100,10 @@ const saveMemo = () => {
   resetEdit()
 }
 
-const updateLocationMarker = (latitude: number, longitude: number) => {
+const updateLocationMarker = (
+  latitude: number,
+  longitude: number,
+) => {
   if (!locationMap) return
 
   const position: L.LatLngTuple = [latitude, longitude]
@@ -106,13 +116,15 @@ const updateLocationMarker = (latitude: number, longitude: number) => {
   locationMarker = L.circleMarker(position, {
     radius: 8,
     weight: 2,
-    color: '#4f7cff',
-    fillColor: '#4f7cff',
+    color: TMR_PRIMARY,
+    fillColor: TMR_PRIMARY,
     fillOpacity: 0.9,
   }).addTo(locationMap)
 }
 
-const handleLocationSearchSelect = (location: LocationSearchResult) => {
+const handleLocationSearchSelect = (
+  location: LocationSearchResult,
+) => {
   selectedLatitude.value = location.latitude
   selectedLongitude.value = location.longitude
   selectedLocationName.value = location.name
@@ -136,14 +148,20 @@ const startLocationEdit = async () => {
 
   await nextTick()
 
-  const mapElement = document.getElementById('photo-detail-location-map')
+  const mapElement = document.getElementById(
+    'photo-detail-location-map',
+  )
+
   if (!mapElement) return
 
   destroyLocationMap()
 
   const latitude = props.photo.latitude
   const longitude = props.photo.longitude
-  const hasLocation = latitude !== null && longitude !== null
+  const hasLocation =
+    latitude !== null &&
+    longitude !== null
+
   const center: L.LatLngTuple = hasLocation
     ? [latitude, longitude]
     : [36.5, 127.8]
@@ -153,12 +171,15 @@ const startLocationEdit = async () => {
     hasLocation ? 15 : 7,
   )
 
-  L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-      attribution: '&copy; OpenStreetMap contributors',
-    },
-  ).addTo(locationMap)
+  locationMap.attributionControl.setPrefix(false)
+
+  const mapTilerLayer = new MaptilerLayer({
+    apiKey: MAPTILER_API_KEY,
+    style: MAPTILER_MAP_ID,
+    language: Language.STYLE_LOCK,
+  })
+
+  mapTilerLayer.addTo(locationMap)
 
   if (hasLocation) {
     updateLocationMarker(latitude, longitude)
@@ -169,7 +190,10 @@ const startLocationEdit = async () => {
     selectedLongitude.value = event.latlng.lng
     selectedLocationName.value = null
 
-    updateLocationMarker(event.latlng.lat, event.latlng.lng)
+    updateLocationMarker(
+      event.latlng.lat,
+      event.latlng.lng,
+    )
   })
 
   requestAnimationFrame(() => {
@@ -182,7 +206,9 @@ const saveLocation = () => {
     selectedLatitude.value === null ||
     selectedLongitude.value === null
   ) {
-    window.alert('장소를 검색하거나 지도에서 위치를 선택해 주세요.')
+    window.alert(
+      '장소를 검색하거나 지도에서 위치를 선택해 주세요.',
+    )
     return
   }
 
