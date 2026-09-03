@@ -1,14 +1,14 @@
-# Travel Diary
+# Travel Story
 
 사진의 시간·위치 정보를 기반으로 여행 기록을 타임라인과 지도 형태로 구성하고,
 동행자를 초대해 함께 기록을 공유할 수 있는 여행 기록 웹 서비스입니다.
 
-이 저장소는 **Travel Diary의 Frontend** 프로젝트입니다.
+이 저장소는 **Travel Story의 Frontend** 프로젝트입니다.
 
 ## Repository
 
-* **Frontend:** https://github.com/ShinWonJin01/travel-diary-web
-* **Backend:** https://github.com/ShinWonJin01/travel-diary-backend
+* **Frontend:** https://github.com/ShinWonJin01/travel-story-frontend
+* **Backend:** https://github.com/ShinWonJin01/travel-story-backend
 
 ## Tech Stack
 
@@ -125,8 +125,8 @@ Spring Boot Backend
 ### 1. Repository Clone
 
 ```bash
-git clone https://github.com/ShinWonJin01/travel-diary-web.git
-cd travel-diary-web
+git clone https://github.com/ShinWonJin01/travel-story-frontend.git
+cd travel-story-frontend
 ```
 
 ### 2. Install Dependencies
@@ -151,14 +151,14 @@ Vite 개발 서버 실행 후 출력되는 주소로 접속합니다.
 http://localhost:5173
 ```
 
-> Frontend 기능을 정상적으로 사용하려면 Travel Diary Backend 서버가 함께 실행되어 있어야 합니다.
+> Frontend 기능을 정상적으로 사용하려면 Travel Story Backend 서버가 함께 실행되어 있어야 합니다.
 
 ## Backend
 
 Backend는 별도의 Spring Boot 프로젝트로 구성되어 있습니다.
 
 **Backend Repository**
-https://github.com/ShinWonJin01/travel-diary-backend
+https://github.com/ShinWonJin01/travel-story-backend
 
 Frontend에서는 REST API를 통해 회원, 여행, 사진, 초대, 알림 등의 데이터를 Backend와 주고받습니다.
 
