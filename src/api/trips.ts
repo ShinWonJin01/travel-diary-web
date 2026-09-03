@@ -276,3 +276,15 @@ export async function updateTripPhotoLocation(
     },
   )
 }
+
+export async function deleteTripPhotoLocation(
+  tripId: number,
+  photoId: number,
+): Promise<TripPhoto> {
+  return apiRequest<TripPhoto>(
+    `/api/trips/${tripId}/photos/${photoId}/location`,
+    {
+      method: 'DELETE',
+    },
+  )
+}

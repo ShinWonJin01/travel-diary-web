@@ -100,6 +100,7 @@ const {
   updatePhotoMemo,
   updatePhotoTakenAt,
   updatePhotoLocation,
+  deletePhotoLocation,
 } = useTripPhotos({
   tripId,
   currentMemberId: currentMember?.id,
@@ -477,6 +478,20 @@ const handleUpdatePhotoLocation = async (
   }
 }
 
+const handleDeletePhotoLocation = async (
+  photoId: number,
+) => {
+  try {
+    await deletePhotoLocation(photoId)
+  } catch (error) {
+    window.alert(
+      error instanceof ApiError
+        ? error.message
+        : '사진 위치를 삭제하지 못했습니다.',
+    )
+  }
+}
+
 const handleDeleteTrip = async () => {
   if (
     !window.confirm(
@@ -620,6 +635,7 @@ watch(
           @update-memo="handleUpdatePhotoMemo"
           @update-taken-at="handleUpdatePhotoTakenAt"
           @update-location="handleUpdatePhotoLocation"
+          @delete-location="handleDeletePhotoLocation"
         />
 
         <TripMapTab

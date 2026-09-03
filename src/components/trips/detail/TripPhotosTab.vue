@@ -22,6 +22,7 @@ const emit = defineEmits<{
     longitude: number,
     locationName: string | null,
   ]
+  deleteLocation: [photoId: number]
 }>()
 
 const selectedPhotoId = ref<number | null>(null)
@@ -173,6 +174,12 @@ const handleModalLocationUpdate = (
   locationName: string | null,
 ) => {
   emit('updateLocation', photoId, latitude, longitude, locationName)
+}
+
+const handleModalLocationDelete = (
+  photoId: number,
+) => {
+  emit('deleteLocation', photoId)
 }
 
 const handlePhotoRowWheel = (event: WheelEvent) => {
@@ -381,6 +388,7 @@ onBeforeUnmount(() => {
     @update-memo="handleModalMemoUpdate"
     @update-taken-at="handleModalTakenAtUpdate"
     @update-location="handleModalLocationUpdate"
+    @delete-location="handleModalLocationDelete"
   />
 </template>
 

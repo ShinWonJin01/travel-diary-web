@@ -7,6 +7,7 @@ import {
 
 import {
   deleteTripPhoto,
+  deleteTripPhotoLocation,
   updateTripPhotoLocation,
   updateTripPhotoMemo,
   updateTripPhotoTakenAt,
@@ -362,6 +363,24 @@ export function useTripPhotos({
     replacePhoto(updatedPhoto)
   }
 
+  const deletePhotoLocation = async (
+    photoId: number,
+  ) => {
+    const id = tripId.value
+
+    if (id === null) {
+      return
+    }
+
+    const updatedPhoto =
+      await deleteTripPhotoLocation(
+        id,
+        photoId,
+      )
+
+    replacePhoto(updatedPhoto)
+  }
+
   return {
     tripPhotos,
     timelineGroups,
@@ -372,5 +391,6 @@ export function useTripPhotos({
     updatePhotoMemo,
     updatePhotoTakenAt,
     updatePhotoLocation,
+    deletePhotoLocation,
   }
 }

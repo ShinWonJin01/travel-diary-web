@@ -42,6 +42,7 @@ const emit = defineEmits<{
     longitude: number,
     locationName: string | null,
   ]
+  deleteLocation: [photoId: number]
 }>()
 
 const editType = ref<EditType>(null)
@@ -223,6 +224,24 @@ const saveLocation = () => {
   resetEdit()
 }
 
+const deleteLocation = () => {
+  if (
+    props.photo.latitude === null ||
+    props.photo.longitude === null
+  ) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    '이 사진의 위치 정보를 삭제하시겠습니까?',
+  )
+
+  if (!confirmed) return
+
+  emit('deleteLocation', props.photo.id)
+  resetEdit()
+}
+
 onBeforeUnmount(destroyLocationMap)
 </script>
 
@@ -276,9 +295,22 @@ onBeforeUnmount(destroyLocationMap)
           ></div>
 
           <div class="editor-actions">
+            <button
+              v-if="
+                photo.latitude !== null &&
+                photo.longitude !== null
+              "
+              class="delete-location-button"
+              type="button"
+              @click="deleteLocation"
+            >
+              위치 삭제
+            </button>
+
             <button type="button" @click="resetEdit">
               취소
             </button>
+
             <button
               class="save-button"
               type="button"
@@ -527,6 +559,18 @@ onBeforeUnmount(destroyLocationMap)
   border-color: var(--tmr-primary-dark);
   color: var(--tmr-surface);
   background: var(--tmr-primary-dark);
+}
+
+.editor-actions .delete-location-button {
+  margin-right: auto;
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.editor-actions .delete-location-button:hover {
+  border-color: #b91c1c;
+  color: #b91c1c;
+  background: #fef2f2;
 }
 
 @media (max-width: 760px) {
