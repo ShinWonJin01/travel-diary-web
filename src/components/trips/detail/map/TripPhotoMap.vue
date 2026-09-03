@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Language, MaptilerLayer } from '@maptiler/leaflet-maptilersdk'
 import L from 'leaflet'
 
 import type { MapPhoto } from '@/composables/trips/useTripPhotos'
@@ -7,6 +8,8 @@ import type { MapPhoto } from '@/composables/trips/useTripPhotos'
 import 'leaflet/dist/leaflet.css'
 
 const TMR_PRIMARY = '#4f7cff'
+const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY
+const MAPTILER_MAP_ID = '01a06816-6944-7f4c-9c04-68146a27ca8e'
 
 const props = withDefaults(
   defineProps<{
@@ -29,6 +32,7 @@ const formatTakenAt = (takenAt: string | null) => {
   if (!takenAt) return '촬영시간 정보 없음'
 
   const [datePart, timePart] = takenAt.split('T')
+
   if (!datePart || !timePart) return '촬영시간 정보 없음'
 
   return `${datePart.replaceAll('-', '.')} ${timePart.slice(0, 5)}`
@@ -96,18 +100,16 @@ const clearActiveMarker = () => {
 const updateMarkers = () => {
   if (!map || !markerLayer) return
 
-  const currentMap = map
-  const currentMarkerLayer = markerLayer
-
-  currentMarkerLayer.clearLayers()
+  markerLayer.clearLayers()
   clearActiveMarker()
 
   if (props.photos.length === 0) {
-    currentMap.setView([36.5, 127.8], 7)
+    map.setView([36.5, 127.8], 7)
     return
   }
 
   const bounds: L.LatLngTuple[] = []
+
   const sortedPhotos = [...props.photos].sort((a, b) => {
     if (!a.takenAt && !b.takenAt) return 0
     if (!a.takenAt) return 1
@@ -125,15 +127,12 @@ const updateMarkers = () => {
     const marker = L.marker(position, {
       icon: createPhotoMarkerIcon(index + 1),
     })
-      .bindPopup(
-        createPhotoPopup(photo, index + 1),
-        {
-          closeButton: false,
-          autoClose: true,
-          closeOnClick: true,
-        },
-      )
-      .addTo(currentMarkerLayer)
+      .bindPopup(createPhotoPopup(photo, index + 1), {
+        closeButton: false,
+        autoClose: true,
+        closeOnClick: true,
+      })
+      .addTo(markerLayer!)
 
     marker.on('click', () => {
       if (activeMarker && activeMarker !== marker) {
@@ -169,10 +168,10 @@ const updateMarkers = () => {
       color: TMR_PRIMARY,
       weight: props.mode === 'preview' ? 2 : 3,
       opacity: 0.7,
-    }).addTo(currentMarkerLayer)
+    }).addTo(markerLayer)
   }
 
-  currentMap.fitBounds(bounds, {
+  map.fitBounds(bounds, {
     padding: props.mode === 'preview'
       ? [20, 20]
       : [40, 40],
@@ -186,36 +185,35 @@ onMounted(() => {
   isMapReady.value = false
 
   map = L.map(mapElement.value).setView([36.5, 127.8], 7)
+  map.attributionControl.setPrefix(false)
 
-  const tileLayer = L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-      attribution: '&copy; OpenStreetMap contributors',
-    },
-  )
+  const mapTilerLayer = new MaptilerLayer({
+    apiKey: MAPTILER_API_KEY,
+    style: MAPTILER_MAP_ID,
+    language: Language.STYLE_LOCK,
+  })
 
-  tileLayer.once('load', () => {
+  mapTilerLayer.once('ready', () => {
     requestAnimationFrame(() => {
       map?.invalidateSize()
       isMapReady.value = true
     })
   })
 
-  tileLayer.addTo(map)
+  mapTilerLayer.addTo(map)
 
   map.on('click', () => {
     map?.closePopup()
   })
 
   markerLayer = L.layerGroup().addTo(map)
+
   updateMarkers()
 })
 
 watch(
   () => props.photos,
-  () => {
-    updateMarkers()
-  },
+  updateMarkers,
   { deep: true },
 )
 
@@ -337,6 +335,16 @@ onBeforeUnmount(() => {
   color: var(--tmr-text);
 }
 
+.trip-photo-map :deep(.map-photo-popup-order) {
+  align-self: flex-start;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--tmr-primary);
+  background: var(--tmr-surface-soft);
+}
+
 .trip-photo-map :deep(.map-photo-marker-wrapper) {
   border: 0;
   background: transparent;
@@ -379,14 +387,11 @@ onBeforeUnmount(() => {
   transform: rotate(-45deg) scale(1.15);
 }
 
-.trip-photo-map :deep(.map-photo-popup-order) {
-  align-self: flex-start;
-  padding: 3px 7px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--tmr-primary);
-  background: var(--tmr-surface-soft);
+.trip-photo-map :deep(.leaflet-control-attribution) {
+  padding: 1px 4px;
+  font-size: 8px;
+  line-height: 1.2;
+  opacity: 0.6;
 }
 
 @keyframes map-spin {
@@ -413,6 +418,10 @@ onBeforeUnmount(() => {
   .map-loading-spinner {
     width: 22px;
     height: 22px;
+  }
+
+  .trip-photo-map :deep(.leaflet-control-attribution) {
+    font-size: 7px;
   }
 }
 </style>
